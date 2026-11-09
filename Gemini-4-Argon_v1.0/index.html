@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>揪一下 Squad Up | 線上即時揪團 MVP 雛形</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#FAF9F5',
+            ink: { DEFAULT: '#2D3748', soft: '#4A5568', mute: '#718096' },
+            brand: {
+              50: '#F0F9F4',
+              100: '#DDF1E5',
+              200: '#BDE3CE',
+              300: '#92CFAF',
+              400: '#5FB38B',
+              500: '#38A169',
+              600: '#2E7D5B',
+              700: '#266549',
+              800: '#1F513B',
+              900: '#194231',
+            },
+            peach: {
+              50: '#FFF8F1',
+              100: '#FFEEDB',
+              200: '#FDDDB8',
+              300: '#F9C48A',
+              400: '#F2A65A',
+              500: '#E58A33',
+              600: '#C26D1F',
+              700: '#9A5519',
+            }
+          },
+          boxShadow: {
+            soft: '0 1px 2px rgba(45,55,72,.04), 0 4px 16px rgba(45,55,72,.06)',
+            float: '0 -8px 30px rgba(45,55,72,.12)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: #FAF9F5;
+      color: #2D3748;
+      font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    }
+    .bottom-sheet-backdrop {
+      transition: opacity 0.25s ease;
+    }
+    .bottom-sheet-panel {
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 border-b border-stone-200/70 bg-cream/90 backdrop-blur-md">
+    <div class="mx-auto flex h-16 max-w-xl items-center justify-between px-4">
+      <button onclick="switchView('home')" class="flex items-center gap-2.5 text-left focus:outline-none">
+        <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-600 text-lg font-extrabold text-white shadow-sm">揪</span>
+        <div>
+          <span id="brandTitle" class="block text-base font-extrabold leading-tight text-ink">揪一下</span>
+          <span class="block text-[11px] font-medium text-ink-mute">Squad Up · スコッドアップ</span>
+        </div>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <!-- Language Switcher -->
+        <div class="inline-flex rounded-full border border-stone-200 bg-white p-0.5 text-xs font-bold shadow-sm">
+          <button onclick="setLang('zh-TW')" id="lang-zh-TW" class="rounded-full px-2.5 py-1.5 transition bg-brand-600 text-white">中</button>
+          <button onclick="setLang('en')" id="lang-en" class="rounded-full px-2.5 py-1.5 transition text-ink-soft">EN</button>
+          <button onclick="setLang('ja')" id="lang-ja" class="rounded-full px-2.5 py-1.5 transition text-ink-soft">日</button>
+        </div>
+
+        <!-- Google Role Switcher (Guest vs Free Member) -->
+        <button id="authBtn" onclick="toggleAuth()" class="inline-flex h-10 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 text-xs font-bold text-ink shadow-sm hover:bg-stone-50 active:scale-95 transition">
+          <span id="authDot" class="h-2 w-2 rounded-full bg-stone-400"></span>
+          <span id="authLabel">Google 登入</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Prototype View Switcher Bar -->
+    <div class="mx-auto max-w-xl px-4 pb-2.5">
+      <div class="grid grid-cols-4 gap-1 rounded-2xl bg-stone-200/70 p-1 text-xs font-bold">
+        <button onclick="switchView('home')" id="tab-home" class="h-9 rounded-xl transition bg-white text-ink shadow-sm">1. 首頁</button>
+        <button onclick="switchView('create')" id="tab-create" class="h-9 rounded-xl transition text-ink-soft">2. 發起揪團</button>
+        <button onclick="switchView('room')" id="tab-room" class="h-9 rounded-xl transition text-ink-soft">3. 揪團房間</button>
+        <button onclick="switchView('dashboard')" id="tab-dashboard" class="h-9 rounded-xl transition text-ink-soft">4. 會員紀錄</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container (Mobile-First max-w-xl) -->
+  <main class="mx-auto w-full max-w-xl px-4 pt-4 space-y-4">
+
+    <!-- ==================== VIEW 1: HOME ==================== -->
+    <section id="view-home" class="space-y-4">
+      <div class="relative overflow-hidden rounded-3xl bg-white px-5 pb-6 pt-6 shadow-soft">
+        <div class="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-peach-100/70 pointer-events-none"></div>
+        <div class="relative">
+          <span id="homeBadge" class="inline-flex items-center gap-1.5 rounded-full bg-peach-100 px-3 py-1 text-xs font-bold text-peach-700">
+            ✨ 免註冊即可快速發起
+          </span>
+          <h1 id="homeHeroTitle" class="mt-3 text-2xl font-extrabold leading-snug text-ink">
+            揪一下，輕鬆喬好聚會時間與地點。
+          </h1>
+          <p id="homeHeroSub" class="mt-1.5 text-sm text-ink-soft">
+            建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。
+          </p>
+
+          <!-- Mini Heatmap Preview -->
+          <div class="mt-4 grid grid-cols-7 gap-1.5 rounded-2xl bg-cream p-3">
+            <span class="aspect-square rounded-lg bg-[#F5F5F4]"></span>
+            <span class="aspect-square rounded-lg bg-[#DDF1E5]"></span>
+            <span class="aspect-square rounded-lg bg-[#B4DFC6]"></span>
+            <span class="aspect-square rounded-lg bg-[#DDF1E5]"></span>
+            <span class="aspect-square rounded-lg bg-[#F5F5F4]"></span>
+            <span class="aspect-square rounded-lg bg-[#3F9C71]"></span>
+            <span class="aspect-square rounded-lg bg-[#1F5C42]"></span>
+            <span class="aspect-square rounded-lg bg-[#DDF1E5]"></span>
+            <span class="aspect-square rounded-lg bg-[#B4DFC6]"></span>
+            <span class="aspect-square rounded-lg bg-[#7CC29E]"></span>
+            <span class="aspect-square rounded-lg bg-[#1F5C42]"></span>
+            <span class="aspect-square rounded-lg bg-[#3F9C71]"></span>
+            <span class="aspect-square rounded-lg bg-[#F5F5F4]"></span>
+            <span class="aspect-square rounded-lg bg-[#B4DFC6]"></span>
+          </div>
+
+          <button onclick="switchView('create')" id="homeCreateBtn" class="mt-5 flex h-12 w-full items-center justify-center rounded-2xl bg-brand-600 text-base font-bold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+            我是主辦人 · 發起新揪團
+          </button>
+        </div>
+      </div>
+
+      <!-- Join by Code -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft space-y-2.5">
+        <label id="homeJoinLabel" class="block text-sm font-bold text-ink">輸入揪團代碼或連結進入</label>
+        <div class="flex gap-2">
+          <input id="joinCodeInput" type="text" value="friday-hotpot-88" placeholder="例如：friday-hotpot-88" class="h-12 flex-1 rounded-2xl border border-stone-200 px-3.5 text-sm focus:border-brand-500 focus:outline-none" />
+          <button onclick="switchView('room')" id="homeJoinBtn" class="h-12 shrink-0 rounded-2xl bg-brand-50 px-4 text-sm font-bold text-brand-700 hover:bg-brand-100 active:scale-95 transition">
+            前往揪團
+          </button>
+        </div>
+      </div>
+
+      <!-- Demo Quick Actions -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-ink-mute">最近開啟的房間（LocalStorage）</span>
+          <span class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">Live Demo</span>
+        </div>
+        <button onclick="switchView('room')" class="flex w-full items-center justify-between rounded-2xl border border-stone-100 bg-stone-50/70 p-3.5 text-left hover:bg-stone-100/80 transition">
+          <div>
+            <p class="font-bold text-ink" id="recentRoomTitle">🍲 週五下班麻辣鍋 & 桌遊局</p>
+            <p class="mt-0.5 text-xs text-ink-mute">主辦人：阿哲 · 目前參加人數 <span id="homeLiveCount">4 / 6</span></p>
+          </div>
+          <span class="text-sm font-bold text-brand-600">進入 →</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: CREATE EVENT ==================== -->
+    <section id="view-create" class="hidden space-y-4">
+      <div class="px-1">
+        <h1 class="text-2xl font-extrabold text-ink">發起新揪團</h1>
+        <p class="text-sm text-ink-soft">填好基本資訊，主辦人建立後自動占 1 個名額。</p>
+      </div>
+
+      <form onsubmit="handleCreateEvent(event)" class="space-y-4">
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-3.5">
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">活動主題 <span class="text-red-500">*</span></label>
+            <input id="createTitle" type="text" required value="🍲 週五下班麻辣鍋 & 桌遊局" maxlength="80" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-base focus:border-brand-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">主辦人暱稱 <span class="text-red-500">*</span></label>
+            <input id="createHost" type="text" required value="阿哲 (Host)" maxlength="24" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-base focus:border-brand-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Candidate Locations -->
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-bold text-ink">候選地點（選填，最多 3 個）</h2>
+              <p class="text-xs text-ink-mute">0 個顯示待定、1 個直接顯示地址、2～3 個開啟單選投票</p>
+            </div>
+          </div>
+
+          <!-- Quick Saved Spots (Member Feature) -->
+          <div class="rounded-2xl bg-peach-50 p-3">
+            <p class="mb-2 text-xs font-bold text-peach-700">⚡ 常用生活圈 / 捷運站快捷帶入（會員功能）：</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="addSavedSpot('辛殿麻辣鍋（松江南京站）', 'https://maps.google.com/?q=辛殿麻辣鍋')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 辛殿麻辣鍋</button>
+              <button type="button" onclick="addSavedSpot('詹記麻辣火鍋（敦南店）', 'https://maps.google.com/?q=詹記麻辣火鍋')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 詹記麻辣鍋</button>
+              <button type="button" onclick="addSavedSpot('陽光桌遊世界（中山站）', 'https://maps.google.com/?q=中山站桌遊')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 中山站桌遊</button>
+            </div>
+          </div>
+
+          <div id="createLocationsList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Capacity, Expiry, Passcode -->
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">參加人數上限（1～20 人，預設 20） <span class="text-red-500">*</span></label>
+            <p class="mb-2 text-xs text-ink-mute">包含主辦人本人（建立後即為 1/N）。為方便測試額滿情境，此處預設為 6 人：</p>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="adjustCap(-1)" class="h-12 w-12 rounded-2xl border border-stone-200 font-extrabold text-lg hover:bg-stone-50">−</button>
+              <input id="createCap" type="number" min="1" max="20" step="1" required value="6" class="h-12 flex-1 rounded-2xl border border-stone-200 text-center text-lg font-extrabold focus:border-brand-500 focus:outline-none" />
+              <button type="button" onclick="adjustCap(1)" class="h-12 w-12 rounded-2xl border border-stone-200 font-extrabold text-lg hover:bg-stone-50">+</button>
+            </div>
+            <p id="capError" class="mt-1 hidden text-xs font-semibold text-red-600">請輸入 1 到 20 之間的整數！</p>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-bold text-ink">連結有效天數</label>
+            <div class="flex flex-wrap gap-2" id="expiryButtons">
+              <button type="button" onclick="selectExpiry(3)" data-days="3" class="expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft">3 天</button>
+              <button type="button" onclick="selectExpiry(5)" data-days="5" class="expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft">5 天</button>
+              <button type="button" onclick="selectExpiry(7)" data-days="7" class="expiry-btn h-11 rounded-2xl border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white">7 天</button>
+              <button type="button" onclick="selectExpiry(30)" data-days="30" class="expiry-btn h-11 rounded-2xl border border-dashed border-stone-300 bg-white px-4 text-sm font-semibold text-ink-mute">🔒 30 天（會員）</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">房間密碼（選填，3～8 碼）</label>
+            <input id="createPasscode" type="text" minlength="3" maxlength="8" placeholder="留空代表免密碼；設定後進入房間需驗證" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-sm focus:border-brand-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <button type="submit" class="flex h-12 w-full items-center justify-center rounded-2xl bg-brand-600 text-base font-bold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+          生成揪團連結並前往房間
+        </button>
+      </form>
+    </section>
+
+    <!-- ==================== VIEW 3: GATHERING ROOM (/g/[id]) ==================== -->
+    <section id="view-room" class="hidden space-y-4">
+
+      <!-- Prototype Simulator Toolbar (for testing Capacity / Passcode / Guest vs Host) -->
+      <div class="rounded-2xl border border-brand-200 bg-brand-50/80 p-3 text-xs space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="font-extrabold text-brand-800">🧪 互動驗收模擬器（即時測試規格情境）：</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="simulateNewJoiner()" class="rounded-xl bg-white px-2.5 py-1.5 font-bold text-brand-700 shadow-sm hover:bg-brand-100">+ 模擬路人報名占額</button>
+            <button onclick="switchIdentityMode()" id="identitySwitchBtn" class="rounded-xl bg-white px-2.5 py-1.5 font-bold text-peach-700 shadow-sm hover:bg-peach-100">切換視角：新訪客（尚未報名）</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Room Header Summary -->
+      <div class="rounded-3xl bg-white p-5 shadow-soft">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5 mb-2">
+              <span id="capacityBadge" class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
+                👥 參加人數：4 / 6
+              </span>
+              <span id="expiryBadge" class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-ink-soft">
+                ⏳ 剩餘 6 天 23 小時
+              </span>
+              <span id="finalizedBadge" class="hidden items-center gap-1 rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700">
+                🔒 已拍板定案
+              </span>
+            </div>
+            <h1 id="roomTitle" class="text-xl font-extrabold text-ink break-words">🍲 週五下班麻辣鍋 & 桌遊局</h1>
+            <p class="mt-1 text-sm text-ink-soft">主辦人：<span id="roomHost" class="font-semibold text-ink">阿哲</span></p>
+          </div>
+          <button onclick="openShareModal()" class="flex h-11 shrink-0 items-center gap-1.5 rounded-2xl bg-brand-50 px-3.5 text-xs font-bold text-brand-700 hover:bg-brand-100 active:scale-95 transition">
+            🔗 分享連結
+          </button>
+        </div>
+      </div>
+
+      <!-- Finalized Confirmed Banner (Hidden until finalized) -->
+      <div id="finalizedCard" class="hidden rounded-3xl border-2 border-brand-300 bg-gradient-to-b from-brand-50 to-white p-5 shadow-soft space-y-3">
+        <div class="flex items-center gap-2 text-brand-700">
+          <span class="text-xl">🎉</span>
+          <h2 class="text-lg font-extrabold">成團啦！行程已拍板定案</h2>
+        </div>
+        <div class="grid gap-2 rounded-2xl bg-white p-3.5 text-sm">
+          <div>
+            <span class="text-xs font-bold text-ink-mute">確認時間</span>
+            <p id="finalTimeText" class="font-extrabold text-ink text-base"></p>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-ink-mute">確認地點</span>
+            <p id="finalLocText" class="font-extrabold text-peach-700 text-base"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <a id="gcalLink" href="#" target="_blank" rel="noopener" class="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-700">
+            📅 加入 Google 日曆
+          </a>
+          <button onclick="downloadIcsFile()" class="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-brand-100 text-sm font-bold text-brand-800 hover:bg-brand-200">
+            ⬇️ 下載 .ics 行事曆檔
+          </button>
+        </div>
+      </div>
+
+      <!-- Full Capacity Alert Banner (Shown when full & viewer is not yet a participant) -->
+      <div id="fullAlertBanner" class="hidden rounded-2xl border border-peach-300 bg-peach-50 px-4 py-3 text-sm text-peach-700">
+        <p class="font-extrabold" id="fullAlertTitle">⚠️ 活動已額滿（6/6）</p>
+        <p class="mt-0.5 text-xs">你仍可查看月曆熱度與最佳時段，但無法新增報名；已加入者仍可修改自己的時段。</p>
+      </div>
+
+      <!-- Current User Nickname & Status Card -->
+      <div id="participantFormCard" class="rounded-3xl bg-white p-4 shadow-soft space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-extrabold text-ink">你的參加資訊</h2>
+          <span id="myStatusBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">
+            ✓ 已占名額（同裝置可編輯）
+          </span>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-bold text-ink-soft">你的暱稱（儲存於本機 LocalStorage Token）</label>
+          <input id="myNicknameInput" type="text" value="小美 (我)" maxlength="24" class="h-11 w-full rounded-2xl border border-stone-200 px-3.5 text-sm font-semibold focus:border-brand-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <!-- 2-Month Calendar Heatmap -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft">
+        <div class="mb-3 flex items-center justify-between px-1">
+          <div>
+            <h2 class="text-lg font-extrabold text-ink" id="calTitle">月曆時程熱度圖（2 個月）</h2>
+            <p class="text-xs text-ink-mute" id="calSubtitle">點選日期彈出底部抽屜，勾選你有空的時段</p>
+          </div>
+          <div class="flex rounded-xl bg-stone-100 p-0.5 text-xs font-bold">
+            <button onclick="setCalMonth(0)" id="monthBtn0" class="rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm">本月</button>
+            <button onclick="setCalMonth(1)" id="monthBtn1" class="rounded-lg px-2.5 py-1 text-ink-soft">下個月</button>
+          </div>
+        </div>
+
+        <!-- Calendar Grid Container -->
+        <div id="heatmapContainer"></div>
+
+        <!-- Heatmap Legend -->
+        <div class="mt-4 flex items-center justify-between px-1 text-xs text-ink-mute">
+          <div class="flex items-center gap-1.5">
+            <span>少</span>
+            <span class="h-3.5 w-3.5 rounded bg-stone-100"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#DDF1E5]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#B4DFC6]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#7CC29E]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#3F9C71]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#1F5C42]"></span>
+            <span>多（最熱門）</span>
+          </div>
+          <span class="flex items-center gap-1 font-semibold">
+            <span class="h-2 w-2 rounded-full bg-peach-400"></span> 我已勾選
+          </span>
+        </div>
+      </div>
+
+      <!-- Top 3 Best Time Slots Leaderboard -->
+      <div id="top3Card" class="rounded-3xl bg-white p-4 shadow-soft">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-lg font-extrabold text-ink">
+            <span>🏆</span> <span id="top3Title">最佳時段排行榜 Top 3</span>
+          </h2>
+          <span class="text-xs text-ink-mute">點擊可查看名單</span>
+        </div>
+        <div id="top3List" class="space-y-2"></div>
+      </div>
+
+      <!-- Location Voting Module -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft">
+        <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-ink">
+          <span>📍</span> <span id="locVoteTitle">地點投票 / 資訊區</span>
+        </h2>
+        <div id="locationVotingContainer" class="space-y-2.5"></div>
+      </div>
+
+      <!-- Host Management Controls & Attendee Roster -->
+      <div class="rounded-3xl border border-brand-100 bg-white p-4 shadow-soft space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-lg font-extrabold text-ink">
+            <span>👑</span> <span id="rosterTitle">參加著名單與主辦人管理</span>
+          </h2>
+          <span id="rosterCountBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-extrabold text-brand-700">4 / 6</span>
+        </div>
+        <p id="hostPrivilegeHint" class="rounded-2xl bg-stone-50 px-3 py-2 text-xs text-ink-mute">
+          💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」與「拍板定案（鎖定表單並匯出 .ics）」。
+        </p>
+        <ul id="attendeeList" class="divide-y divide-stone-100"></ul>
+
+        <div id="hostFinalizeBar" class="hidden pt-2">
+          <button onclick="finalizeGathering()" id="finalizeBtn" class="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+            ✅ 拍板定案（以第一名時段與最高票地點鎖定揪團）
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: MEMBER DASHBOARD ==================== -->
+    <section id="view-dashboard" class="hidden space-y-4">
+      <div class="rounded-3xl bg-white p-5 shadow-soft space-y-3">
+        <h1 class="text-xl font-extrabold text-ink">我的揪團紀錄（跨裝置儀表板）</h1>
+        <p class="text-xs text-ink-mute">Google OAuth 2.0 會員專屬：管理我主辦與我參加的活動，連結最長保留 30 天。</p>
+        <div class="space-y-2 pt-1">
+          <h2 class="text-sm font-extrabold text-brand-700">👑 我主辦的揪團 (Hosted by Me)</h2>
+          <div onclick="switchView('room')" class="cursor-pointer flex items-center justify-between rounded-2xl border border-stone-200 p-3.5 hover:bg-stone-50">
+            <div>
+              <p class="font-bold text-ink">🍲 週五下班麻辣鍋 & 桌遊局</p>
+              <p class="text-xs text-ink-mute">有效期限：剩餘 7 天 · 狀態：進行中</p>
+            </div>
+            <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700" id="dashCount">4 / 6</span>
+          </div>
+        </div>
+        <div class="space-y-2 pt-2">
+          <h2 class="text-sm font-extrabold text-peach-700">🙋 我參加的揪團 (Joined by Me)</h2>
+          <div class="flex items-center justify-between rounded-2xl border border-stone-200 p-3.5 opacity-80">
+            <div>
+              <p class="font-bold text-ink">🎬 週末電影《沙丘》松仁威秀團</p>
+              <p class="text-xs text-ink-mute">主辦人：Kevin · 已拍板定案</p>
+            </div>
+            <span class="rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700">已額滿 8 / 8</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Sticky Submit Bar for Gathering Room -->
+  <div id="stickySubmitBar" class="hidden fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-cream/95 backdrop-blur-md">
+    <div class="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3">
+      <div class="min-w-0">
+        <p id="stickySelectionSummary" class="text-sm font-extrabold text-ink">已勾選 3 個有空時段</p>
+        <p id="stickyRoleHint" class="text-xs text-ink-mute">送出時執行原子交易驗證名額上限</p>
+      </div>
+      <button onclick="submitAvailability()" id="submitVoteBtn" class="h-12 shrink-0 rounded-2xl bg-brand-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition">
+        更新我的回覆
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MOBILE BOTTOM SHEET (Date Slot Selection) ==================== -->
+  <div id="slotSheetBackdrop" onclick="closeSlotSheet()" class="bottom-sheet-backdrop fixed inset-0 z-40 hidden bg-ink/40 opacity-0"></div>
+  <div id="slotSheetPanel" class="bottom-sheet-panel fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-xl translate-y-full rounded-t-[2rem] bg-cream shadow-float">
+    <div class="mx-auto mt-3 h-1.5 w-12 rounded-full bg-stone-300"></div>
+    <div class="px-5 pb-3 pt-3 flex items-center justify-between">
+      <div>
+        <h3 id="sheetDateTitle" class="text-xl font-extrabold text-ink">11月15日（週日）</h3>
+        <p id="sheetDateSub" class="text-xs text-ink-mute">點選你有空的時段（全天代表所有時段皆可參加）</p>
+      </div>
+      <button onclick="closeSlotSheet()" class="rounded-full bg-stone-200/70 px-3 py-1.5 text-xs font-bold text-ink-soft">關閉</button>
+    </div>
+    <div id="sheetSlotsContainer" class="max-h-[60vh] space-y-2.5 overflow-y-auto px-4 pb-4"></div>
+    <div class="border-t border-stone-200/70 bg-cream px-4 py-3">
+      <button onclick="closeSlotSheet()" class="h-12 w-full rounded-2xl bg-brand-600 text-base font-extrabold text-white active:scale-[.98] transition">
+        完成選擇
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== SHARE MODAL ==================== -->
+  <div id="shareModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/40 p-4">
+    <div class="w-full max-w-md rounded-3xl bg-white p-5 shadow-float space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-extrabold text-ink">分享你的揪團連結</h3>
+        <button onclick="closeShareModal()" class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-ink-soft">✕</button>
+      </div>
+      <!-- OG Preview Card -->
+      <div class="rounded-2xl border border-stone-200 bg-cream p-3.5 space-y-1">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-brand-700">LINE / Discord 動態 Open Graph 預覽</span>
+        <p id="ogPreviewTitle" class="font-extrabold text-ink">🍲 週五下班麻辣鍋 & 桌遊局 | 揪一下</p>
+        <p id="ogPreviewDesc" class="text-xs text-ink-soft">主辦人：阿哲 · 目前參加人數 4 / 6 人 · 點進來選你有空的時間！</p>
+      </div>
+      <div class="flex gap-2">
+        <input id="shareUrlInput" readonly value="https://squadup.app/g/friday-hotpot-88" class="h-11 flex-1 rounded-2xl border border-stone-200 bg-stone-50 px-3 text-xs font-mono text-ink" />
+        <button onclick="copyShareLink()" class="h-11 shrink-0 rounded-2xl bg-brand-600 px-4 text-xs font-extrabold text-white hover:bg-brand-700">
+          一鍵複製
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="nativeShare()" class="h-11 rounded-2xl bg-[#06C755] text-xs font-extrabold text-white hover:opacity-95">
+          💬 轉發至 LINE / 原生分享
+        </button>
+        <button onclick="closeShareModal()" class="h-11 rounded-2xl bg-stone-100 text-xs font-extrabold text-ink-soft hover:bg-stone-200">
+          關閉視窗
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PASSCODE GATE MODAL ==================== -->
+  <div id="passcodeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/50 p-4">
+    <div class="w-full max-w-sm rounded-3xl bg-white p-5 shadow-float space-y-4 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-peach-100 text-2xl">🔐</div>
+      <div>
+        <h3 class="text-lg font-extrabold text-ink">請輸入房間參加密碼</h3>
+        <p class="mt-1 text-xs text-ink-mute">此揪團受密碼保護，請輸入主辦人設定的密碼：</p>
+      </div>
+      <input id="passcodePromptInput" type="password" maxlength="8" placeholder="輸入密碼" class="h-12 w-full rounded-2xl border border-stone-200 text-center text-lg font-extrabold tracking-widest focus:border-brand-500 focus:outline-none" />
+      <p id="passcodeError" class="hidden text-xs font-bold text-red-600">密碼錯誤，請再試一次！</p>
+      <button onclick="verifyRoomPasscode()" class="h-12 w-full rounded-2xl bg-brand-600 text-sm font-extrabold text-white">解鎖進入房間</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity duration-200"></div>
+
+  <script>
+    // ==================== STATE & DATA ====================
+    const SLOTS = [
+      { id: 'ALL_DAY', label: { 'zh-TW': '全天皆可', en: 'All Day', ja: '終日OK' }, sub: '09:00 - 22:00' },
+      { id: 'MORNING', label: { 'zh-TW': '上午', en: 'Morning', ja: '午前' }, sub: '09:00 - 12:00' },
+      { id: 'AFTERNOON', label: { 'zh-TW': '下午', en: 'Afternoon', ja: '午後' }, sub: '13:00 - 17:00' },
+      { id: 'EVENING', label: { 'zh-TW': '晚上', en: 'Evening', ja: '夜' }, sub: '18:00 - 22:00' }
+    ];
+
+    const HEAT_RAMP = [
+      null,
+      { bg: '#DDF1E5', fg: '#194231' },
+      { bg: '#B4DFC6', fg: '#194231' },
+      { bg: '#7CC29E', fg: '#12301F' },
+      { bg: '#3F9C71', fg: '#FFFFFF' },
+      { bg: '#1F5C42', fg: '#FFFFFF' }
+    ];
+
+    let state = {
+      lang: 'zh-TW',
+      isMember: false,
+      currentView: 'home',
+      calMonthOffset: 0,
+      activeSheetDate: null,
+      // Identity mode: 'existing' = already joined participant (token p_me), 'new_guest' = unjoined visitor testing capacity guard
+      viewerMode: 'existing',
+      event: {
+        id: 'friday-hotpot-88',
+        title: '🍲 週五下班麻辣鍋 & 桌遊局',
+        hostNickname: '阿哲',
+        maxParticipants: 6,
+        expiryDays: 7,
+        passcode: '',
+        passcodeUnlocked: true,
+        isFinalized: false,
+        finalDate: null,
+        finalSlot: null,
+        finalLocation: null,
+        locations: [
+          { id: 'loc_1', name: '辛殿麻辣鍋（松江南京站）', mapUrl: 'https://maps.google.com/?q=辛殿麻辣鍋', notes: '步行 3 分鐘，吃到飽' },
+          { id: 'loc_2', name: '詹記麻辣火鍋（敦南店）', mapUrl: 'https://maps.google.com/?q=詹記麻辣火鍋', notes: '鴨血超讚，需訂位' },
+          { id: 'loc_3', name: '陽光桌遊世界（中山站）', mapUrl: 'https://maps.google.com/?q=中山站桌遊', notes: '可叫外送進場' }
+        ],
+        participants: [
+          { id: 'p_host', nickname: '阿哲', isHost: true, locationId: 'loc_1' },
+          { id: 'p_2', nickname: '凱文', isHost: false, locationId: 'loc_1' },
+          { id: 'p_3', nickname: '筑筑', isHost: false, locationId: 'loc_2' },
+          { id: 'p_me', nickname: '小美 (我)', isHost: false, locationId: 'loc_1' }
+        ],
+        // Votes array: { participantId, date, slot }
+        votes: []
+      }
+    };
+
+    // Helper to get YYYY-MM-DD offset from today
+    function dateOffsetStr(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // Seed initial realistic heatmap data
+    function seedInitialVotes() {
+      const d3 = dateOffsetStr(3);
+      const d4 = dateOffsetStr(4);
+      const d7 = dateOffsetStr(7);
+      const d8 = dateOffsetStr(8);
+      const d12 = dateOffsetStr(12);
+
+      state.event.votes = [
+        // d3: 4 people free in EVENING (Best slot #1)
+        { participantId: 'p_host', date: d3, slot: 'ALL_DAY' },
+        { participantId: 'p_2', date: d3, slot: 'EVENING' },
+        { participantId: 'p_3', date: d3, slot: 'EVENING' },
+        { participantId: 'p_me', date: d3, slot: 'EVENING' },
+        // d4: 3 people free in AFTERNOON (Best slot #2)
+        { participantId: 'p_host', date: d4, slot: 'AFTERNOON' },
+        { participantId: 'p_2', date: d4, slot: 'ALL_DAY' },
+        { participantId: 'p_me', date: d4, slot: 'AFTERNOON' },
+        // d7: 3 people free in EVENING (Best slot #3)
+        { participantId: 'p_host', date: d7, slot: 'EVENING' },
+        { participantId: 'p_3', date: d7, slot: 'ALL_DAY' },
+        { participantId: 'p_me', date: d7, slot: 'EVENING' },
+        // d8: 2 people free in MORNING
+        { participantId: 'p_host', date: d8, slot: 'MORNING' },
+        { participantId: 'p_2', date: d8, slot: 'MORNING' },
+        // d12: 1 person free
+        { participantId: 'p_3', date: d12, slot: 'EVENING' }
+      ];
+    }
+
+    // Create form candidate locations draft
+    let createLocationsDraft = [
+      { name: '辛殿麻辣鍋（松江南京站）', mapUrl: 'https://maps.google.com/?q=辛殿麻辣鍋', notes: '步行 3 分鐘，吃到飽' },
+      { name: '詹記麻辣火鍋（敦南店）', mapUrl: 'https://maps.google.com/?q=詹記麻辣火鍋', notes: '鴨血超讚，需訂位' }
+    ];
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 2400);
+    }
+
+    // ==================== I18N ====================
+    const I18N = {
+      'zh-TW': {
+        brand: '揪一下',
+        badge: '✨ 免註冊即可快速發起',
+        heroTitle: '揪一下，輕鬆喬好聚會時間與地點。',
+        heroSub: '建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。',
+        createCta: '我是主辦人 · 發起新揪團',
+        joinLabel: '輸入揪團代碼或連結進入',
+        joinBtn: '前往揪團',
+        tabs: ['1. 首頁', '2. 發起揪團', '3. 揪團房間', '4. 會員紀錄']
+      },
+      en: {
+        brand: 'Squad Up',
+        badge: '✨ No sign-up required',
+        heroTitle: 'Squad up in a snap — pick the day, pick the place.',
+        heroSub: 'Create a gathering, share one link on LINE or Discord, and watch free days light up.',
+        createCta: "I'm the host · Start a gathering",
+        joinLabel: 'Enter a gathering code or link',
+        joinBtn: 'Join room',
+        tabs: ['1. Home', '2. Create', '3. Room', '4. Dashboard']
+      },
+      ja: {
+        brand: 'スコッドアップ',
+        badge: '✨ 登録不要ですぐ使える',
+        heroTitle: 'さくっと集まろう。日程も場所もすぐ決まる。',
+        heroSub: '募集を作ってLINEやDiscordで共有。みんなの空き日がカレンダーに色づきます。',
+        createCta: '幹事になる · 新しい募集を作成',
+        joinLabel: '募集コードまたはリンクを入力',
+        joinBtn: '募集へ移動',
+        tabs: ['1. ホーム', '2. 募集作成', '3. ルーム', '4. マイ募集']
+      }
+    };
+
+    function setLang(lang) {
+      state.lang = lang;
+      ['zh-TW', 'en', 'ja'].forEach(l => {
+        const btn = document.getElementById('lang-' + l);
+        if (l === lang) {
+          btn.className = 'rounded-full px-2.5 py-1.5 transition bg-brand-600 text-white';
+        } else {
+          btn.className = 'rounded-full px-2.5 py-1.5 transition text-ink-soft';
+        }
+      });
+      const dict = I18N[lang];
+      document.getElementById('brandTitle').textContent = dict.brand;
+      document.getElementById('homeBadge').textContent = dict.badge;
+      document.getElementById('homeHeroTitle').textContent = dict.heroTitle;
+      document.getElementById('homeHeroSub').textContent = dict.heroSub;
+      document.getElementById('homeCreateBtn').textContent = dict.createCta;
+      document.getElementById('homeJoinLabel').textContent = dict.joinLabel;
+      document.getElementById('homeJoinBtn').textContent = dict.joinBtn;
+      ['home', 'create', 'room', 'dashboard'].forEach((v, idx) => {
+        document.getElementById('tab-' + v).textContent = dict.tabs[idx];
+      });
+      renderRoom();
+    }
+
+    function toggleAuth() {
+      state.isMember = !state.isMember;
+      const dot = document.getElementById('authDot');
+      const label = document.getElementById('authLabel');
+      if (state.isMember) {
+        dot.className = 'h-2 w-2 rounded-full bg-brand-500';
+        label.textContent = '阿哲 (Google 會員)';
+        showToast('已切換為 Google 登入會員（可設定 30 天效期、踢人、拍板定案）');
+      } else {
+        dot.className = 'h-2 w-2 rounded-full bg-stone-400';
+        label.textContent = 'Google 登入';
+        if (state.event.expiryDays === 30) selectExpiry(7);
+        showToast('已切換為免註冊訪客模式（LocalStorage Token）');
+      }
+      renderRoom();
+    }
+
+    // ==================== NAVIGATION ====================
+    function switchView(view) {
+      state.currentView = view;
+      ['home', 'create', 'room', 'dashboard'].forEach(v => {
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+        const tab = document.getElementById('tab-' + v);
+        if (v === view) {
+          tab.className = 'h-9 rounded-xl transition bg-white text-ink shadow-sm';
+        } else {
+          tab.className = 'h-9 rounded-xl transition text-ink-soft';
+        }
+      });
+
+      document.getElementById('stickySubmitBar').classList.toggle('hidden', view !== 'room');
+
+      if (view === 'create') renderCreateLocations();
+      if (view === 'room') {
+        if (state.event.passcode && !state.event.passcodeUnlocked) {
+          document.getElementById('passcodeModal').classList.remove('hidden');
+          document.getElementById('passcodeModal').classList.add('flex');
+        }
+        renderRoom();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==================== CREATE EVENT FORM ====================
+    function renderCreateLocations() {
+      const container = document.getElementById('createLocationsList');
+      if (createLocationsDraft.length === 0) {
+        container.innerHTML = `<p class="rounded-2xl bg-stone-50 px-3.5 py-3 text-xs text-ink-mute">目前未設定地點（前台將顯示「地點尚未確定」）。點擊上方快捷按鈕或下方新增。</p>`;
+      } else {
+        container.innerHTML = createLocationsDraft.map((loc, i) => `
+          <div class="rounded-2xl border border-stone-200 p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="rounded-full bg-peach-100 px-2.5 py-0.5 text-xs font-bold text-peach-700">候選地點 ${i + 1}</span>
+              <button type="button" onclick="removeCreateLoc(${i})" class="text-xs font-bold text-red-600 hover:underline">移除</button>
+            </div>
+            <input type="text" value="${loc.name}" onchange="updateCreateLoc(${i}, 'name', this.value)" placeholder="店名或地標名稱" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-sm" />
+            <input type="text" value="${loc.notes || ''}" onchange="updateCreateLoc(${i}, 'notes', this.value)" placeholder="備註（例如：松江南京站 3 號出口）" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-xs text-ink-soft" />
+          </div>
+        `).join('');
+      }
+      if (createLocationsDraft.length < 3) {
+        container.innerHTML += `
+          <button type="button" onclick="addSavedSpot('', '')" class="h-11 w-full rounded-2xl border border-dashed border-peach-300 bg-peach-50/50 text-xs font-bold text-peach-700 hover:bg-peach-100">
+            + 新增候選地點 (${createLocationsDraft.length}/3)
+          </button>
+        `;
+      }
+    }
+
+    function addSavedSpot(name, mapUrl) {
+      if (createLocationsDraft.length >= 3) {
+        showToast('最多只能設定 3 個候選地點喔！');
+        return;
+      }
+      createLocationsDraft.push({ name: name || '新候選地點', mapUrl: mapUrl || '', notes: '' });
+      renderCreateLocations();
+    }
+
+    function removeCreateLoc(idx) {
+      createLocationsDraft.splice(idx, 1);
+      renderCreateLocations();
+    }
+
+    function updateCreateLoc(idx, key, val) {
+      createLocationsDraft[idx][key] = val;
+    }
+
+    function adjustCap(delta) {
+      const input = document.getElementById('createCap');
+      const next = Math.min(20, Math.max(1, (parseInt(input.value, 10) || 20) + delta));
+      input.value = next;
+    }
+
+    function selectExpiry(days) {
+      if (days === 30 && !state.isMember) {
+        showToast('請先點選右上角「Google 登入」解鎖 30 天會員效期！');
+        return;
+      }
+      state.event.expiryDays = days;
+      document.querySelectorAll('.expiry-btn').forEach(btn => {
+        const d = Number(btn.getAttribute('data-days'));
+        if (d === days) {
+          btn.className = 'expiry-btn h-11 rounded-2xl border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white';
+        } else {
+          btn.className = 'expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft';
+        }
+      });
+    }
+
+    function handleCreateEvent(e) {
+      e.preventDefault();
+      const capVal = Number(document.getElementById('createCap').value);
+      const capError = document.getElementById('capError');
+      if (!Number.isInteger(capVal) || capVal < 1 || capVal > 20) {
+        capError.classList.remove('hidden');
+        showToast('人數上限必須為 1～20 的整數！');
+        return;
+      }
+      capError.classList.add('hidden');
+
+      const title = document.getElementById('createTitle').value.trim() || '未命名揪團';
+      const host = document.getElementById('createHost').value.trim() || '主辦人';
+      const passcode = document.getElementById('createPasscode').value.trim();
+
+      state.event.title = title;
+      state.event.hostNickname = host;
+      state.event.maxParticipants = capVal;
+      state.event.passcode = passcode;
+      state.event.passcodeUnlocked = !passcode;
+      state.event.isFinalized = false;
+      state.event.locations = createLocationsDraft
+        .filter(l => l.name.trim())
+        .map((l, i) => ({ id: 'loc_' + (i + 1), name: l.name.trim(), mapUrl: l.mapUrl, notes: l.notes }));
+
+      // Host automatically occupies 1 slot upon creation
+      state.event.participants = [
+        { id: 'p_host', nickname: host, isHost: true, locationId: state.event.locations[0]?.id || null }
+      ];
+      state.viewerMode = 'existing';
+      document.getElementById('myNicknameInput').value = host;
+      const d2 = dateOffsetStr(2);
+      state.event.votes = [{ participantId: 'p_host', date: d2, slot: 'EVENING' }];
+
+      switchView('room');
+      openShareModal();
+      showToast('已建立揪團！主辦人已自動占 1 個名額 (1/' + capVal + ')');
+    }
+
+    // ==================== ROOM LOGIC & RENDERING ====================
+    function currentActorId() {
+      if (state.viewerMode === 'new_guest') return 'p_new_visitor';
+      // Check if p_me exists, otherwise p_host
+      return state.event.participants.some(p => p.id === 'p_me') ? 'p_me' : 'p_host';
+    }
+
+    function isAlreadyJoined() {
+      const id = currentActorId();
+      return state.event.participants.some(p => p.id === id);
+    }
+
+    function isRoomFull() {
+      return state.event.participants.length >= state.event.maxParticipants;
+    }
+
+    function isReadOnly() {
+      if (state.event.isFinalized) return true;
+      if (!isAlreadyJoined() && isRoomFull()) return true;
+      return false;
+    }
+
+    // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING)
+    function getSlotAttendees(date, slot) {
+      const set = new Set();
+      state.event.votes.forEach(v => {
+        if (v.date !== date) return;
+        if (v.slot === slot || (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY')) {
+          set.add(v.participantId);
+        }
+      });
+      return [...set];
+    }
+
+    function getDateBestOverlap(date) {
+      let best = 0;
+      ['MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+        const count = getSlotAttendees(date, slot).length;
+        if (count > best) best = count;
+      });
+      return best;
+    }
+
+    function computeTop3() {
+      const dates = [...new Set(state.event.votes.map(v => v.date))].sort();
+      const candidates = [];
+      dates.forEach(date => {
+        ['ALL_DAY', 'MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+          const ids = getSlotAttendees(date, slot);
+          if (ids.length >= 2) {
+            candidates.push({ date, slot, count: ids.length, ids });
+          }
+        });
+      });
+      candidates.sort((a, b) => b.count - a.count || a.date.localeCompare(b.date));
+      const picked = [];
+      for (const c of candidates) {
+        if (picked.length >= 3) break;
+        if (picked.some(p => p.date === c.date && p.count === c.count && p.ids.length === c.ids.length)) continue;
+        picked.push(c);
+      }
+      return picked;
+    }
+
+    function renderRoom() {
+      const ev = state.event;
+      const count = ev.participants.length;
+      const max = ev.maxParticipants;
+      const full = count >= max;
+      const joined = isAlreadyJoined();
+      const readOnly = isReadOnly();
+      const actorId = currentActorId();
+
+      // Update header & badges
+      document.getElementById('roomTitle').textContent = ev.title;
+      document.getElementById('recentRoomTitle').textContent = ev.title;
+      document.getElementById('roomHost').textContent = ev.hostNickname;
+      document.getElementById('homeLiveCount').textContent = `${count} / ${max}`;
+      document.getElementById('dashCount').textContent = `${count} / ${max}`;
+      document.getElementById('rosterCountBadge').textContent = `${count} / ${max}`;
+
+      const capBadge = document.getElementById('capacityBadge');
+      if (full) {
+        capBadge.className = 'inline-flex items-center gap-1 rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700';
+        capBadge.textContent = `🈵 已額滿 Full (${count}/${max})`;
+      } else {
+        capBadge.className = 'inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700';
+        capBadge.textContent = `👥 參加人數：${count} / ${max}`;
+      }
+
+      document.getElementById('expiryBadge').textContent = `⏳ 剩餘 ${ev.expiryDays} 天`;
+      document.getElementById('finalizedBadge').classList.toggle('hidden', !ev.isFinalized);
+      document.getElementById('finalizedBadge').classList.toggle('inline-flex', ev.isFinalized);
+      document.getElementById('finalizedCard').classList.toggle('hidden', !ev.isFinalized);
+
+      // Full alert banner for unjoined visitors
+      const fullBanner = document.getElementById('fullAlertBanner');
+      if (!ev.isFinalized && full && !joined) {
+        fullBanner.classList.remove('hidden');
+        document.getElementById('fullAlertTitle').textContent = `⚠️ 活動已額滿（${count}/${max}）— 尚未報名者僅供檢視`;
+      } else {
+        fullBanner.classList.add('hidden');
+      }
+
+      // Identity status badge
+      const statusBadge = document.getElementById('myStatusBadge');
+      if (joined) {
+        statusBadge.className = 'rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700';
+        statusBadge.textContent = '✓ 已占名額（同裝置編輯不重複占位）';
+      } else {
+        statusBadge.className = 'rounded-full bg-peach-100 px-2.5 py-0.5 text-xs font-bold text-peach-700';
+        statusBadge.textContent = '訪客視角（尚未送出報名，不占名額）';
+      }
+
+      // Sticky bar button text
+      const myVotesCount = ev.votes.filter(v => v.participantId === actorId).length;
+      document.getElementById('stickySelectionSummary').textContent = readOnly
+        ? (ev.isFinalized ? '🔒 揪團已拍板定案鎖定' : `🈵 活動已額滿 (${count}/${max})`)
+        : `目前已勾選 ${myVotesCount} 個時段`;
+      const submitBtn = document.getElementById('submitVoteBtn');
+      submitBtn.textContent = joined ? '更新我的回覆' : '送出報名（占 1 名額）';
+      submitBtn.disabled = ev.isFinalized;
+      submitBtn.className = ev.isFinalized
+        ? 'h-12 shrink-0 rounded-2xl bg-stone-300 px-6 text-sm font-extrabold text-white cursor-not-allowed'
+        : 'h-12 shrink-0 rounded-2xl bg-brand-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition';
+
+      renderCalendarHeatmap();
+      renderTop3Leaderboard();
+      renderLocationVoting();
+      renderAttendeeRoster();
+    }
+
+    function setCalMonth(offset) {
+      state.calMonthOffset = offset;
+      document.getElementById('monthBtn0').className = offset === 0 ? 'rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm' : 'rounded-lg px-2.5 py-1 text-ink-soft';
+      document.getElementById('monthBtn1').className = offset === 1 ? 'rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm' : 'rounded-lg px-2.5 py-1 text-ink-soft';
+      renderCalendarHeatmap();
+    }
+
+    function renderCalendarHeatmap() {
+      const container = document.getElementById('heatmapContainer');
+      const now = new Date();
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() + state.calMonthOffset, 1);
+      const year = targetMonth.getFullYear();
+      const month = targetMonth.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const lead = targetMonth.getDay();
+      const todayStr = dateOffsetStr(0);
+      const actorId = currentActorId();
+
+      // Find global max overlap for relative heatmap scaling
+      let maxOverlap = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const c = getDateBestOverlap(dateStr);
+        if (c > maxOverlap) maxOverlap = c;
+      }
+
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+      let html = `
+        <div class="mb-2 px-1 text-sm font-extrabold text-ink">${year} 年 ${month + 1} 月</div>
+        <div class="grid grid-cols-7 gap-1">
+          ${weekdays.map(w => `<div class="pb-1 text-center text-xs font-bold text-ink-mute">${w}</div>`).join('')}
+          ${Array.from({ length: lead }, () => `<div></div>`).join('')}
+      `;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isPast = dateStr < todayStr;
+        const overlap = getDateBestOverlap(dateStr);
+        const hasMine = state.event.votes.some(v => v.date === dateStr && v.participantId === actorId);
+        const isFinal = state.event.finalDate === dateStr;
+
+        let level = 0;
+        if (overlap > 0 && maxOverlap > 0) {
+          const ratio = maxOverlap === 1 ? 0.5 : overlap / maxOverlap;
+          level = Math.max(1, Math.min(5, Math.ceil(ratio * 5)));
+        }
+        const style = level > 0 && !isPast
+          ? `background-color:${HEAT_RAMP[level].bg};color:${HEAT_RAMP[level].fg};`
+          : '';
+
+        html += `
+          <button
+            type="button"
+            ${isPast ? 'disabled' : `onclick="openSlotSheet('${dateStr}')"`}
+            style="${style}"
+            class="relative flex aspect-square min-h-[44px] flex-col items-center justify-center rounded-xl text-sm font-bold transition ${
+              isPast
+                ? 'cursor-default text-stone-300'
+                : level === 0
+                  ? 'bg-stone-50 text-ink hover:bg-stone-100 active:scale-95'
+                  : ' active:scale-95'
+            } ${isFinal ? 'ring-2 ring-peach-500 ring-offset-1' : ''}"
+          >
+            <span class="leading-none">${day}</span>
+            ${overlap > 0 && !isPast ? `<span class="mt-0.5 text-[10px] font-extrabold leading-none opacity-85">${overlap}人</span>` : ''}
+            ${hasMine && !isPast ? `<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-peach-400 ring-1 ring-white"></span>` : ''}
+          </button>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    // ==================== BOTTOM SHEET (Date Slots) ====================
+    function openSlotSheet(dateStr) {
+      state.activeSheetDate = dateStr;
+      document.getElementById('sheetDateTitle').textContent = `${dateStr} 時段選擇`;
+      renderSheetSlots();
+      const backdrop = document.getElementById('slotSheetBackdrop');
+      const panel = document.getElementById('slotSheetPanel');
+      backdrop.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('translate-y-full');
+      });
+    }
+
+    function closeSlotSheet() {
+      const backdrop = document.getElementById('slotSheetBackdrop');
+      const panel = document.getElementById('slotSheetPanel');
+      backdrop.classList.add('opacity-0');
+      panel.classList.add('translate-y-full');
+      setTimeout(() => backdrop.classList.add('hidden'), 250);
+    }
+
+    function renderSheetSlots() {
+      const dateStr = state.activeSheetDate;
+      if (!dateStr) return;
+      const actorId = currentActorId();
+      const readOnly = isReadOnly();
+      const container = document.getElementById('sheetSlotsContainer');
+
+      container.innerHTML = SLOTS.map(slot => {
+        const selected = state.event.votes.some(
+          v => v.date === dateStr && v.participantId === actorId && (v.slot === slot.id || (slot.id !== 'ALL_DAY' && v.slot === 'ALL_DAY'))
+        );
+        const attendeeIds = getSlotAttendees(dateStr, slot.id);
+        const names = attendeeIds.map(id => {
+          const p = state.event.participants.find(x => x.id === id);
+          if (p) return p.nickname;
+          if (id === actorId) return document.getElementById('myNicknameInput').value || '我 (草稿)';
+          return '參加者';
+        });
+
+        return `
+          <div class="rounded-2xl border bg-white p-3.5 transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
+            <button
+              type="button"
+              ${readOnly ? 'disabled' : `onclick="toggleDateSlot('${dateStr}', '${slot.id}')"`}
+              class="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <div class="flex items-center gap-3">
+                <span class="flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
+                  selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white'
+                }">
+                  ${selected ? '✓' : ''}
+                </span>
+                <div>
+                  <span class="block font-extrabold text-ink">${slot.label[state.lang]}</span>
+                  <span class="block text-xs text-ink-mute">${slot.sub}</span>
+                </div>
+              </div>
+              <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">
+                👥 ${names.length} 人有空
+              </span>
+            </button>
+            ${names.length > 0 ? `
+              <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-stone-100 pt-2">
+                ${names.map(n => `<span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-ink-soft">${n}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleDateSlot(dateStr, slotId) {
+      if (isReadOnly()) {
+        showToast('目前為唯讀狀態（已額滿或已鎖定），無法勾選！');
+        return;
+      }
+      const actorId = currentActorId();
+      const exists = state.event.votes.some(v => v.date === dateStr && v.participantId === actorId && v.slot === slotId);
+
+      if (slotId === 'ALL_DAY') {
+        // Remove all slots on that day for actor, then add ALL_DAY if not exists
+        state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId));
+        if (!exists) state.event.votes.push({ participantId: actorId, date: dateStr, slot: 'ALL_DAY' });
+      } else {
+        // Remove ALL_DAY if present
+        state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId && v.slot === 'ALL_DAY'));
+        if (exists) {
+          state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId && v.slot === slotId));
+        } else {
+          state.event.votes.push({ participantId: actorId, date: dateStr, slot: slotId });
+        }
+      }
+
+      renderSheetSlots();
+      renderRoom();
+    }
+
+    // ==================== TOP 3 LEADERBOARD ====================
+    function renderTop3Leaderboard() {
+      const distinctVoters = new Set(state.event.votes.map(v => v.participantId)).size;
+      const card = document.getElementById('top3Card');
+      if (distinctVoters < 2) {
+        card.classList.add('hidden');
+        return;
+      }
+      card.classList.remove('hidden');
+
+      const top = computeTop3();
+      const list = document.getElementById('top3List');
+      if (top.length === 0) {
+        list.innerHTML = `<p class="rounded-2xl bg-stone-50 p-4 text-center text-xs text-ink-mute">目前尚無 2 人以上重疊的時段，多勾選幾個日期吧！</p>`;
+        return;
+      }
+
+      const medals = ['🥇 1', '🥈 2', '🥉 3'];
+      list.innerHTML = top.map((item, idx) => {
+        const slotObj = SLOTS.find(s => s.id === item.slot);
+        const names = item.ids.map(id => state.event.participants.find(p => p.id === id)?.nickname || '我 (草稿)');
+        return `
+          <div onclick="openSlotSheet('${item.date}')" class="cursor-pointer rounded-2xl border border-stone-100 bg-stone-50/80 p-3 hover:bg-stone-100/80 transition">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-7 items-center rounded-full bg-peach-100 px-2.5 text-xs font-extrabold text-peach-700">${medals[idx]}</span>
+                <div>
+                  <span class="font-extrabold text-ink text-sm">${item.date}</span>
+                  <span class="ml-1.5 text-xs font-semibold text-ink-soft">${slotObj ? slotObj.label[state.lang] : item.slot}</span>
+                </div>
+              </div>
+              <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">👥 ${item.count} 人有空</span>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-1">
+              ${names.map(n => `<span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-soft shadow-sm">${n}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==================== LOCATION VOTING ====================
+    function renderLocationVoting() {
+      const locs = state.event.locations;
+      const container = document.getElementById('locationVotingContainer');
+      const actorId = currentActorId();
+      const me = state.event.participants.find(p => p.id === actorId);
+      const myChoice = me ? me.locationId : window.__draftLocId || locs[0]?.id;
+
+      if (locs.length === 0) {
+        container.innerHTML = `
+          <div class="flex items-center gap-2.5 rounded-2xl bg-peach-50 p-4">
+            <span class="rounded-full bg-peach-200 px-2.5 py-0.5 text-xs font-extrabold text-peach-700">TBD</span>
+            <span class="text-sm font-bold text-peach-700">地點尚未確定（Location to be decided）</span>
+          </div>
+        `;
+        return;
+      }
+
+      if (locs.length === 1) {
+        const l = locs[0];
+        container.innerHTML = `
+          <div class="flex items-center justify-between gap-3 rounded-2xl bg-peach-50 p-4">
+            <div>
+              <p class="font-extrabold text-ink">${l.name}</p>
+              ${l.notes ? `<p class="text-xs text-ink-mute mt-0.5">${l.notes}</p>` : ''}
+            </div>
+            <a href="${l.mapUrl || 'https://maps.google.com/?q=' + encodeURIComponent(l.name)}" target="_blank" rel="noopener" class="shrink-0 rounded-full bg-peach-200 px-3.5 py-2 text-xs font-extrabold text-peach-700">
+              🗺️ 開啟地圖
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      // 2-3 locations: Radio voting cards
+      const totalVotes = state.event.participants.filter(p => p.locationId).length;
+      container.innerHTML = locs.map(l => {
+        const votes = state.event.participants.filter(p => p.locationId === l.id).length;
+        const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+        const selected = myChoice === l.id;
+        return `
+          <div class="overflow-hidden rounded-2xl border bg-white transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
+            <button
+              type="button"
+              ${isReadOnly() ? 'disabled' : `onclick="voteLocation('${l.id}')"`}
+              class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
+                  selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
+                }">${selected ? '✓' : ''}</span>
+                <div class="min-w-0">
+                  <span class="block truncate font-extrabold text-ink text-sm">${l.name}</span>
+                  ${l.notes ? `<span class="block truncate text-xs text-ink-mute">${l.notes}</span>` : ''}
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-base font-extrabold text-brand-700">${votes} 票</span>
+                <span class="block text-[11px] text-ink-mute">${pct}%</span>
+              </div>
+            </button>
+            <div class="h-1.5 bg-stone-100">
+              <div class="h-full bg-brand-500 transition-all duration-300" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function voteLocation(locId) {
+      if (isReadOnly()) return;
+      const actorId = currentActorId();
+      const me = state.event.participants.find(p => p.id === actorId);
+      if (me) {
+        me.locationId = locId;
+      } else {
+        window.__draftLocId = locId;
+      }
+      renderLocationVoting();
+    }
+
+    // ==================== ATOMIC CAPACITY GUARD & SUBMISSION ====================
+    function submitAvailability() {
+      const ev = state.event;
+      if (ev.isFinalized) {
+        showToast('⚠️ 活動已拍板定案並鎖定，無法修改！');
+        return;
+      }
+
+      const nick = document.getElementById('myNicknameInput').value.trim();
+      if (!nick) {
+        showToast('請先輸入你的暱稱！');
+        document.getElementById('myNicknameInput').focus();
+        return;
+      }
+
+      const actorId = currentActorId();
+      const existing = ev.participants.find(p => p.id === actorId);
+
+      // Atomic Concurrency & Capacity Check Simulation
+      if (existing) {
+        // Case 2: Token already exists -> update in place without incrementing headcount
+        existing.nickname = nick;
+        showToast(`✓ 已更新「${nick}」的時段與地點（不重複占名額，維持 ${ev.participants.length}/${ev.maxParticipants}）`);
+      } else {
+        // Case 3 & 4: New participant -> check currentParticipantsCount < maxParticipants
+        if (ev.participants.length >= ev.maxParticipants) {
+          showToast(`❌ HTTP 409 Conflict: 活動已額滿 (${ev.participants.length}/${ev.maxParticipants})，無法新增報名！`);
+          renderRoom();
+          return;
+        }
+        // Case 5: Slots remain -> insert participant and lock slot
+        ev.participants.push({
+          id: 'p_me',
+          nickname: nick,
+          isHost: false,
+          locationId: window.__draftLocId || ev.locations[0]?.id || null
+        });
+        // Reassign any draft votes from p_new_visitor to p_me
+        ev.votes.forEach(v => {
+          if (v.participantId === 'p_new_visitor') v.participantId = 'p_me';
+        });
+        state.viewerMode = 'existing';
+        showToast(`🎉 報名成功！已占用 1 個名額（目前人數 ${ev.participants.length}/${ev.maxParticipants}）`);
+      }
+      renderRoom();
+    }
+
+    // Simulator helpers for testing v1.3 scenarios
+    function simulateNewJoiner() {
+      const ev = state.event;
+      if (ev.isFinalized) {
+        showToast('活動已鎖定，無法新增參加者');
+        return;
+      }
+      if (ev.participants.length >= ev.maxParticipants) {
+        showToast(`❌ HTTP 409：名額已滿 (${ev.participants.length}/${ev.maxParticipants})！後端原子交易拒絕寫入。`);
+        return;
+      }
+      const idx = ev.participants.length + 1;
+      const newId = 'p_sim_' + Date.now();
+      const names = ['大衛', '愛麗絲', '博恩', '志明', '春嬌', '阿滴'];
+      const name = names[idx % names.length] + '#' + idx;
+      ev.participants.push({
+        id: newId,
+        nickname: name,
+        isHost: false,
+        locationId: ev.locations[idx % Math.max(1, ev.locations.length)]?.id || null
+      });
+      const d3 = dateOffsetStr(3);
+      ev.votes.push({ participantId: newId, date: d3, slot: 'EVENING' });
+      showToast(`👤 模擬參加者「${name}」加入成功！目前人數：${ev.participants.length}/${ev.maxParticipants}`);
+      renderRoom();
+    }
+
+    function switchIdentityMode() {
+      const btn = document.getElementById('identitySwitchBtn');
+      if (state.viewerMode === 'existing') {
+        state.viewerMode = 'new_guest';
+        document.getElementById('myNicknameInput').value = '新朋友 Leo';
+        btn.textContent = '切換視角：已報名參加者（小美）';
+        showToast('已切換為「尚未報名的新訪客」視角，可測試額滿阻擋或新報名占位！');
+      } else {
+        state.viewerMode = 'existing';
+        document.getElementById('myNicknameInput').value = '小美 (我)';
+        btn.textContent = '切換視角：新訪客（尚未報名）';
+        showToast('已切換回「已報名參加者（小美）」視角，即使額滿仍可編輯自己的時段！');
+      }
+      renderRoom();
+    }
+
+    // ==================== HOST CONTROLS (KICK & FINALIZE) ====================
+    function renderAttendeeRoster() {
+      const ev = state.event;
+      const list = document.getElementById('attendeeList');
+      const hint = document.getElementById('hostPrivilegeHint');
+      const finalizeBar = document.getElementById('hostFinalizeBar');
+
+      hint.classList.toggle('hidden', state.isMember);
+      finalizeBar.classList.toggle('hidden', !state.isMember || ev.isFinalized);
+
+      list.innerHTML = ev.participants.map(p => `
+        <li class="flex items-center justify-between py-2.5">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
+              ${p.nickname.slice(0, 2)}
+            </span>
+            <div>
+              <span class="font-bold text-ink text-sm">${p.nickname}</span>
+              ${p.isHost ? `<span class="ml-1.5 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+            </div>
+          </div>
+          ${state.isMember && !p.isHost && !ev.isFinalized ? `
+            <button onclick="kickAttendee('${p.id}')" class="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-extrabold text-red-600 hover:bg-red-100">
+              剔除並釋出名額
+            </button>
+          ` : ''}
+        </li>
+      `).join('');
+    }
+
+    function kickAttendee(participantId) {
+      const ev = state.event;
+      const target = ev.participants.find(p => p.id === participantId);
+      if (!target || target.isHost) return;
+      ev.participants = ev.participants.filter(p => p.id !== participantId);
+      ev.votes = ev.votes.filter(v => v.participantId !== participantId);
+      showToast(`已剔除「${target.nickname}」，釋出 1 個名額（目前 ${ev.participants.length}/${ev.maxParticipants}），Top 3 已即時重算！`);
+      renderRoom();
+    }
+
+    function finalizeGathering() {
+      const ev = state.event;
+      const top = computeTop3();
+      const chosenDate = top[0]?.date || dateOffsetStr(3);
+      const chosenSlot = top[0]?.slot || 'EVENING';
+      const slotLabel = SLOTS.find(s => s.id === chosenSlot)?.label[state.lang] || chosenSlot;
+
+      let chosenLoc = '地點尚未確定';
+      if (ev.locations.length === 1) {
+        chosenLoc = ev.locations[0].name;
+      } else if (ev.locations.length > 1) {
+        const sorted = [...ev.locations].sort((a, b) => {
+          const va = ev.participants.filter(p => p.locationId === a.id).length;
+          const vb = ev.participants.filter(p => p.locationId === b.id).length;
+          return vb - va;
+        });
+        chosenLoc = sorted[0].name;
+      }
+
+      ev.isFinalized = true;
+      ev.finalDate = chosenDate;
+      ev.finalSlot = chosenSlot;
+      ev.finalLocation = chosenLoc;
+
+      document.getElementById('finalTimeText').textContent = `${chosenDate} · ${slotLabel}`;
+      document.getElementById('finalLocText').textContent = chosenLoc;
+
+      const compactDate = chosenDate.replace(/-/g, '');
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T180000/${compactDate}T220000&location=${encodeURIComponent(chosenLoc)}`;
+      document.getElementById('gcalLink').href = gcalUrl;
+
+      showToast('🎉 已拍板定案！所有投票已鎖定，現在可匯出 Google 日曆或下載 .ics 檔案。');
+      renderRoom();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function downloadIcsFile() {
+      const ev = state.event;
+      const d = (ev.finalDate || dateOffsetStr(3)).replace(/-/g, '');
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Squad Up//Gathering//TW',
+        'BEGIN:VEVENT',
+        `UID:${ev.id}@squadup.app`,
+        `DTSTART:${d}T180000`,
+        `DTEND:${d}T220000`,
+        `SUMMARY:${ev.title}`,
+        `LOCATION:${ev.finalLocation || 'TBD'}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ev.title}.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('⬇️ 已下載 .ics 行事曆檔案！');
+    }
+
+    // ==================== SHARE & PASSCODE MODALS ====================
+    function openShareModal() {
+      const ev = state.event;
+      document.getElementById('ogPreviewTitle').textContent = `${ev.title} | 揪一下 Squad Up`;
+      document.getElementById('ogPreviewDesc').textContent = `主辦人：${ev.hostNickname} · 目前參加人數 ${ev.participants.length} / ${ev.maxParticipants} 人 · 點進來選你有空的時間！`;
+      const modal = document.getElementById('shareModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeShareModal() {
+      const modal = document.getElementById('shareModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function copyShareLink() {
+      const input = document.getElementById('shareUrlInput');
+      navigator.clipboard?.writeText(input.value);
+      showToast('📋 已複製連結！快貼到 LINE 或 Discord 群組吧');
+    }
+
+    function nativeShare() {
+      const ev = state.event;
+      if (navigator.share) {
+        navigator.share({
+          title: ev.title,
+          text: `一起來「${ev.title}」揪一下喬時間吧！`,
+          url: document.getElementById('shareUrlInput').value
+        }).catch(() => {});
+      } else {
+        copyShareLink();
+      }
+    }
+
+    function verifyRoomPasscode() {
+      const val = document.getElementById('passcodePromptInput').value;
+      if (val === state.event.passcode) {
+        state.event.passcodeUnlocked = true;
+        document.getElementById('passcodeModal').classList.add('hidden');
+        document.getElementById('passcodeModal').classList.remove('flex');
+        document.getElementById('passcodeError').classList.add('hidden');
+        showToast('🔓 密碼正確，歡迎進入揪團房間！');
+      } else {
+        document.getElementById('passcodeError').classList.remove('hidden');
+      }
+    }
+
+    // Initialize on load
+    seedInitialVotes();
+    renderRoom();
+  </script>
+</body>
+</html>

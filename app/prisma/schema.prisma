@@ -1,0 +1,114 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String?
+  email          String?       @unique
+  image          String?
+  createdAt      DateTime      @default(now())
+  events         Event[]       @relation("HostEvents")
+  participations Participant[]
+  savedSpots     SavedSpot[]
+}
+
+model Event {
+  id              String   @id @default(cuid())
+  title           String
+  hostNickname    String
+  hostUserId      String?
+  hostUser        User?    @relation("HostEvents", fields: [hostUserId], references: [id])
+  /// scrypt hash ("salt:hash", hex) of the room passcode, never the plain text.
+  passcode        String?
+  maxParticipants Int      @default(20) // Enforced range 1..20 (see lib/validation.ts + DB CHECK in migration notes)
+  /// COARSE = ALL_DAY / MORNING / AFTERNOON / EVENING, HOURLY = one slot per hour in [hourStart, hourEnd)
+  slotMode        String   @default("COARSE")
+  hourStart       Int      @default(9)
+  hourEnd         Int      @default(22)
+  expiresAt       DateTime // UTC
+  isFinalized     Boolean  @default(false)
+  finalDate       String? // YYYY-MM-DD
+  finalSlot       String?
+  finalLocation   String?
+  finalizedAt     DateTime?
+  createdAt       DateTime @default(now()) // UTC
+
+  locations      LocationOption[]
+  participants   Participant[]
+  availabilities Availability[]
+
+  @@index([expiresAt])
+  @@index([hostUserId])
+}
+
+model LocationOption {
+  id      String         @id @default(cuid())
+  eventId String
+  event   Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name    String
+  mapUrl  String?
+  notes   String?
+  sort    Int            @default(0)
+  votes   LocationVote[]
+
+  @@index([eventId])
+}
+
+model Participant {
+  id       String   @id @default(cuid())
+  eventId  String
+  event    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+  token    String // LocalStorage anonymous token
+  nickname String
+  isHost   Boolean  @default(false)
+  joinedAt DateTime @default(now())
+
+  availabilities Availability[]
+  locationVote   LocationVote?
+
+  @@unique([eventId, token])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model Availability {
+  id            String      @id @default(cuid())
+  eventId       String
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  date          String // Format: YYYY-MM-DD
+  slot          String // ALL_DAY | MORNING | AFTERNOON | EVENING | or custom HH:mm-HH:mm
+
+  @@unique([participantId, date, slot])
+  @@index([eventId])
+}
+
+model LocationVote {
+  id               String         @id @default(cuid())
+  locationOptionId String
+  locationOption   LocationOption @relation(fields: [locationOptionId], references: [id], onDelete: Cascade)
+  participantId    String         @unique
+  participant      Participant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+/// Free-member feature: frequently used meetup spots / MRT stations for 1-tap autofill.
+model SavedSpot {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  mapUrl    String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+}
