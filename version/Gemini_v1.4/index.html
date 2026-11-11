@@ -1,0 +1,3064 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>揪一下 Squad Up | 線上即時揪團 MVP 雛形</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",
+        "firebase/analytics": "https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js"
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#FAF9F5',
+            ink: { DEFAULT: '#2D3748', soft: '#4A5568', mute: '#718096' },
+            brand: {
+              50: '#FAF6F1',
+              100: '#F1E6DA',
+              200: '#E2CDB7',
+              300: '#CBA98A',
+              400: '#AD8261',
+              500: '#916545',
+              600: '#795238',
+              700: '#64422E',
+              800: '#503526',
+              900: '#3E291E',
+            },
+            peach: {
+              50: '#FFF8F1',
+              100: '#FFEEDB',
+              200: '#FDDDB8',
+              300: '#F9C48A',
+              400: '#F2A65A',
+              500: '#E58A33',
+              600: '#C26D1F',
+              700: '#9A5519',
+            }
+          },
+          boxShadow: {
+            soft: '0 1px 2px rgba(45,55,72,.04), 0 4px 16px rgba(45,55,72,.06)',
+            float: '0 -8px 30px rgba(45,55,72,.12)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: #FAF9F5;
+      color: #2D3748;
+      font-family: 'Plus Jakarta Sans', 'Inter', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    }
+    .bottom-sheet-backdrop {
+      transition: opacity 0.25s ease;
+    }
+    .bottom-sheet-panel {
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-28">
+
+  <!-- Top Header -->
+  <header class="sticky top-0 z-30 border-b border-stone-200/70 bg-cream/90 backdrop-blur-md">
+    <div class="mx-auto flex min-h-16 max-w-xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <button onclick="switchView('home')" class="flex items-center gap-2.5 text-left focus:outline-none">
+        <!-- 三人圍聚餐桌的向量圖示，縮放時保持清晰。 -->
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-sm" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="8" r="4" fill="currentColor"/><circle cx="8" cy="21" r="4" fill="currentColor"/><circle cx="32" cy="21" r="4" fill="currentColor"/>
+            <path d="M14 17c0-6 12-6 12 0M3 32c0-7 10-9 13-3M24 29c3-6 13-4 13 3" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <ellipse cx="20" cy="24" rx="6" ry="4" fill="#F9C48A"/><path d="M20 28v5" stroke="#F9C48A" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <div>
+          <span id="brandTitle" class="block text-base font-extrabold leading-tight text-ink">揪一下</span>
+          <span id="brandSubtitle" class="block text-[11px] font-medium text-ink-mute">線上即時聚會協調</span>
+        </div>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <!-- Language Switcher -->
+        <div class="inline-flex rounded-full border border-stone-200 bg-white p-0.5 text-xs font-bold shadow-sm">
+          <button onclick="setLang('zh-TW')" id="lang-zh-TW" class="rounded-full px-2.5 py-1.5 transition bg-brand-600 text-white">中</button>
+          <button onclick="setLang('en')" id="lang-en" class="rounded-full px-2.5 py-1.5 transition text-ink-soft">EN</button>
+          <button onclick="setLang('ja')" id="lang-ja" class="rounded-full px-2.5 py-1.5 transition text-ink-soft">日</button>
+        </div>
+
+        <!-- Google Role Switcher (Guest vs Free Member via Firebase Auth) -->
+        <button id="authBtn" onclick="toggleAuth()" class="inline-flex h-10 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 text-xs font-bold text-ink shadow-sm hover:bg-stone-50 active:scale-95 transition">
+          <img id="authAvatar" src="" alt="" class="hidden h-5 w-5 rounded-full object-cover" />
+          <span id="authDot" class="h-2 w-2 rounded-full bg-stone-400"></span>
+          <span id="authLabel">Google 登入</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Prototype View Switcher Bar -->
+    <div class="mx-auto max-w-xl px-4 pb-2.5">
+      <div class="grid grid-cols-4 gap-1 rounded-2xl bg-stone-200/70 p-1 text-xs font-bold">
+        <button onclick="switchView('home')" id="tab-home" class="h-9 rounded-xl transition bg-white text-ink shadow-sm">1. 首頁</button>
+        <button onclick="switchView('create')" id="tab-create" class="h-9 rounded-xl transition text-ink-soft">2. 發起揪團</button>
+        <button onclick="switchView('room')" id="tab-room" class="h-9 rounded-xl transition text-ink-soft">3. 揪團房間</button>
+        <button onclick="switchView('dashboard')" id="tab-dashboard" class="h-9 rounded-xl transition text-ink-soft">4. 歷史紀錄</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container (Mobile-First max-w-xl) -->
+  <main class="mx-auto w-full max-w-xl px-4 pt-4 space-y-4">
+
+    <!-- ==================== VIEW 1: HOME ==================== -->
+    <section id="view-home" class="space-y-4">
+      <div class="relative overflow-hidden rounded-3xl bg-white px-5 pb-6 pt-6 shadow-soft">
+        <div class="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-peach-100/70 pointer-events-none"></div>
+        <div class="relative">
+          <span id="homeBadge" class="inline-flex items-center gap-1.5 rounded-full bg-peach-100 px-3 py-1 text-xs font-bold text-peach-700">
+            ✨ 免註冊即可快速發起
+          </span>
+          <h1 id="homeHeroTitle" class="mt-3 text-2xl font-extrabold leading-snug text-ink">
+            揪一下，輕鬆喬好聚會時間與地點。
+          </h1>
+          <p id="homeHeroSub" class="mt-1.5 text-sm text-ink-soft">
+            建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。
+          </p>
+
+          <button onclick="switchView('create')" id="homeCreateBtn" class="mt-6 flex min-h-16 px-5 py-4 w-full items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+            我是主辦人 · 發起新揪團
+          </button>
+        </div>
+      </div>
+
+      <!-- Join by Code -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft space-y-2.5">
+        <label id="homeJoinLabel" for="joinCodeInput" class="block text-sm font-bold text-ink">輸入揪團代碼或連結進入</label>
+        <div class="flex gap-2">
+          <input id="joinCodeInput" type="text" placeholder="例如：SQ-8821 或貼上完整連結" onkeydown="if(event.key==='Enter')handleHomeJoin()" class="h-12 min-w-0 flex-1 rounded-2xl border border-stone-200 px-3.5 text-sm focus:border-brand-500 focus:outline-none" />
+          <button onclick="handleHomeJoin()" id="homeJoinBtn" class="h-12 shrink-0 rounded-2xl bg-brand-50 px-4 text-sm font-bold text-brand-700 hover:bg-brand-100 active:scale-95 transition">
+            參加揪團
+          </button>
+        </div>
+      </div>
+
+      <!-- Recent Room Section -->
+      <div id="recentRoomSection" class="rounded-3xl bg-white p-4 shadow-soft space-y-2">
+        <div class="flex items-center justify-between">
+          <span id="recentRoomStorageLabel" class="text-xs font-bold uppercase tracking-wider text-ink-mute">最近開啟的房間</span>
+          <span id="recentRoomStorageBadge" class="hidden rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">📦 LocalStorage</span>
+        </div>
+        <div id="recentRoomEmpty" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/60 py-6 px-4 text-center">
+          <span class="text-2xl mb-1">📭</span>
+          <p class="text-xs font-bold text-ink-mute">尚無最近開啟的揪團房間</p>
+          <p class="text-[11px] text-stone-400 mt-0.5">發起新揪團或輸入代碼進入後，就會顯示在這裡</p>
+        </div>
+        <button id="recentRoomCardBtn" onclick="openRecentRoom()" class="hidden w-full items-center justify-between rounded-2xl border border-stone-100 bg-stone-50/70 p-3.5 text-left hover:bg-stone-100/80 transition">
+          <div class="min-w-0 pr-3">
+            <p class="font-bold text-ink truncate" id="recentRoomTitle">--</p>
+            <p class="mt-0.5 text-xs text-ink-mute truncate">主辦人：<span id="recentRoomHost">--</span> · 目前參加人數 <span id="homeLiveCount">--</span></p>
+          </div>
+          <span class="text-sm font-bold text-brand-600 shrink-0">進入 →</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: CREATE EVENT ==================== -->
+    <section id="view-create" class="hidden space-y-4">
+      <div class="px-1">
+        <h1 class="text-2xl font-extrabold text-ink">發起新揪團</h1>
+        <p class="text-sm text-ink-soft">填好基本資訊，主辦人建立後自動占 1 個名額。</p>
+      </div>
+
+      <form onsubmit="handleCreateEvent(event)" class="space-y-4">
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-3.5">
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">活動主題 <span class="text-red-500">*</span></label>
+            <input id="createTitle" type="text" required value="" maxlength="80" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-base focus:border-brand-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">主辦人暱稱 <span class="text-red-500">*</span></label>
+            <input id="createHost" type="text" required value="" maxlength="24" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-base focus:border-brand-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Candidate Locations -->
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-bold text-ink">候選地點（選填，最多 3 個）</h2>
+              <p class="text-xs text-ink-mute">0 個顯示待定、1 個直接顯示地址、2～3 個開啟單選投票</p>
+            </div>
+          </div>
+
+          <!-- 常用地點僅在會員登入狀態顯示，初始訪客隱藏。 -->
+          <div id="savedSpotsSection" class="hidden rounded-2xl bg-peach-50 p-3">
+            <p class="mb-2 text-xs font-bold text-peach-700">⚡ 常用生活圈 / 捷運站快捷帶入（會員功能）：</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" onclick="addSavedSpot('台北車站（北車大廳）', 'https://maps.google.com/?q=台北車站')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 台北車站</button>
+              <button type="button" onclick="addSavedSpot('中山捷運站（4號出口）', 'https://maps.google.com/?q=中山捷運站')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 中山捷運站</button>
+              <button type="button" onclick="addSavedSpot('市政府捷運站（信義商圈）', 'https://maps.google.com/?q=市政府捷運站')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 市政府捷運站</button>
+              <button type="button" onclick="addSavedSpot('板橋車站（新板特區）', 'https://maps.google.com/?q=板橋車站')" class="h-9 rounded-full bg-white px-3 text-xs font-bold text-peach-700 shadow-sm hover:bg-peach-100">+ 板橋車站</button>
+            </div>
+          </div>
+
+          <div id="createLocationsList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Capacity, Expiry, Passcode -->
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">參加人數上限（1～20 人，預設 20） <span class="text-red-500">*</span></label>
+            <p class="mb-2 text-xs text-ink-mute">包含主辦人本人（建立後即為 1/N）。預設上限為 20 人：</p>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="adjustCap(-1)" class="h-12 w-12 rounded-2xl border border-stone-200 font-extrabold text-lg hover:bg-stone-50">−</button>
+              <input id="createCap" type="number" min="1" max="20" step="1" required value="20" class="h-12 flex-1 rounded-2xl border border-stone-200 text-center text-lg font-extrabold focus:border-brand-500 focus:outline-none" />
+              <button type="button" onclick="adjustCap(1)" class="h-12 w-12 rounded-2xl border border-stone-200 font-extrabold text-lg hover:bg-stone-50">+</button>
+            </div>
+            <p id="capError" class="mt-1 hidden text-xs font-semibold text-red-600">請輸入 1 到 20 之間的整數！</p>
+          </div>
+
+          <div>
+            <label class="mb-1.5 block text-sm font-bold text-ink">連結有效天數</label>
+            <div class="flex flex-wrap gap-2" id="expiryButtons">
+              <button type="button" onclick="selectExpiry(3)" data-days="3" class="expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft">3 天</button>
+              <button type="button" onclick="selectExpiry(5)" data-days="5" class="expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft">5 天</button>
+              <button type="button" onclick="selectExpiry(7)" data-days="7" class="expiry-btn h-11 rounded-2xl border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white">7 天</button>
+              <button type="button" onclick="selectExpiry(30)" data-days="30" class="expiry-btn h-11 rounded-2xl border border-dashed border-stone-300 bg-white px-4 text-sm font-semibold text-ink-mute">🔒 30 天（會員）</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-bold text-ink">房間密碼（選填，3～8 碼）</label>
+            <input id="createPasscode" type="text" minlength="3" maxlength="8" placeholder="留空代表免密碼；設定後進入房間需驗證" class="h-12 w-full rounded-2xl border border-stone-200 px-3.5 text-sm focus:border-brand-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <button type="submit" class="flex h-12 w-full items-center justify-center rounded-2xl bg-brand-600 text-base font-bold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+          生成揪團連結並前往房間
+        </button>
+      </form>
+    </section>
+
+    <!-- ==================== VIEW 3: GATHERING ROOM (/g/[id]) ==================== -->
+    <section id="view-room" class="hidden space-y-4">
+
+      <!-- Room Empty State (When no room is active/participated) -->
+      <div id="roomEmptyState" class="rounded-3xl bg-white p-8 text-center shadow-soft space-y-4">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-3xl">
+          🗓️
+        </div>
+        <div class="space-y-1">
+          <h2 class="text-lg font-extrabold text-ink">目前沒有開啟中的揪團房間</h2>
+          <p class="text-xs text-ink-soft max-w-sm mx-auto">
+            你尚未建立或加入任何揪團活動。請先發起新揪團，或在首頁輸入揪團代碼 / 點擊邀請連結進入房間。
+          </p>
+        </div>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
+          <button onclick="switchView('create')" class="w-full sm:w-auto h-11 px-5 rounded-2xl bg-brand-600 text-xs font-bold text-white hover:bg-brand-700 active:scale-95 transition shadow-soft">
+            ✨ 立即發起新揪團
+          </button>
+          <button onclick="switchView('home')" class="w-full sm:w-auto h-11 px-5 rounded-2xl bg-stone-100 text-xs font-bold text-ink hover:bg-stone-200 active:scale-95 transition">
+            🔍 返回首頁輸入代碼
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Room Content (Shown only when a room is loaded/active) -->
+      <div id="roomActiveContent" class="hidden space-y-4">
+        <!-- Room Header Summary & Inline Share Info -->
+        <div class="rounded-3xl bg-white p-5 shadow-soft space-y-4">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5 mb-2">
+              <span id="capacityBadge" class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
+                👥 參加人數：--
+              </span>
+              <span id="expiryBadge" class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-ink-soft">
+                ⏳ 剩餘 -- 天
+              </span>
+              <span id="storageBadge" class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-ink-soft">
+                📦 訪客 LocalStorage
+              </span>
+              <span id="finalizedBadge" class="hidden items-center gap-1 rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700">
+                🔒 已拍板定案
+              </span>
+            </div>
+            <h1 id="roomTitle" class="text-xl font-extrabold text-ink break-words">--</h1>
+            <p class="mt-1 text-sm text-ink-soft">主辦人：<span id="roomHost" class="font-semibold text-ink">--</span></p>
+          </div>
+
+          <!-- Inline Share Link & Room Code Section -->
+          <div id="roomShareCard" class="rounded-2xl border border-stone-200/80 bg-cream/70 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="flex items-center gap-1.5 text-sm font-extrabold text-ink">
+                <span>🔗</span> <span>分享你的揪團連結</span>
+              </h2>
+              <button type="button" onclick="nativeShare()" class="inline-flex h-8 items-center gap-1 rounded-xl bg-[#06C755] px-3 text-xs font-extrabold text-white hover:opacity-95 active:scale-95 transition">
+                💬 轉發至 LINE / 原生分享
+              </button>
+            </div>
+
+            <!-- Room Code Row -->
+            <div class="flex items-center justify-between rounded-2xl bg-white border border-stone-200/70 px-3.5 py-2.5 text-xs">
+              <span class="text-ink-mute">揪團房間代碼：<strong id="shareRoomCode" class="font-mono text-ink text-sm font-extrabold">--</strong></span>
+              <button type="button" onclick="copyRoomCode()" class="rounded-xl bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100 active:scale-95 transition">
+                複製代碼
+              </button>
+            </div>
+
+            <!-- Invite URL Row -->
+            <div class="flex gap-2">
+              <input id="shareUrlInput" readonly value="" placeholder="生成中..." class="h-11 min-w-0 flex-1 rounded-2xl border border-stone-200 bg-white px-3 text-xs font-mono text-ink truncate select-all focus:outline-none" />
+              <button type="button" onclick="copyShareLink()" class="h-11 shrink-0 rounded-2xl bg-brand-600 px-4 text-xs font-extrabold text-white hover:bg-brand-700 active:scale-95 transition">
+                複製連結
+              </button>
+            </div>
+
+            <!-- OG Preview Card -->
+            <div class="rounded-2xl border border-stone-200/70 bg-white p-3 space-y-0.5">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-brand-700">LINE / Discord 動態 Open Graph 預覽</span>
+              <p id="ogPreviewTitle" class="text-xs font-extrabold text-ink">揪團活動 | 揪一下 Squad Up</p>
+              <p id="ogPreviewDesc" class="text-[11px] text-ink-soft">點進來選你有空的時間！</p>
+            </div>
+          </div>
+        </div>
+
+      <!-- Finalized Confirmed Banner (Hidden until finalized) -->
+      <div id="finalizedCard" class="hidden rounded-3xl border-2 border-brand-300 bg-gradient-to-b from-brand-50 to-white p-5 shadow-soft space-y-3">
+        <div class="flex items-center gap-2 text-brand-700">
+          <span class="text-xl">🎉</span>
+          <h2 class="text-lg font-extrabold">成團啦！行程已拍板定案</h2>
+        </div>
+        <div class="grid gap-2 rounded-2xl bg-white p-3.5 text-sm">
+          <div>
+            <span class="text-xs font-bold text-ink-mute">確認時間</span>
+            <p id="finalTimeText" class="font-extrabold text-ink text-base"></p>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-ink-mute">確認地點</span>
+            <p id="finalLocText" class="font-extrabold text-peach-700 text-base"></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <a id="gcalLink" href="#" target="_blank" rel="noopener" class="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-brand-600 text-sm font-bold text-white hover:bg-brand-700">
+            📅 加入 Google 日曆
+          </a>
+          <button onclick="downloadIcsFile()" class="flex h-11 items-center justify-center gap-1.5 rounded-2xl bg-brand-100 text-sm font-bold text-brand-800 hover:bg-brand-200">
+            ⬇️ 下載 .ics 行事曆檔
+          </button>
+        </div>
+      </div>
+
+      <!-- Full Capacity Alert Banner (Shown when full & viewer is not yet a participant) -->
+      <div id="fullAlertBanner" class="hidden rounded-2xl border border-peach-300 bg-peach-50 px-4 py-3 text-sm text-peach-700">
+        <p class="font-extrabold" id="fullAlertTitle">⚠️ 活動已額滿（6/6）</p>
+        <p class="mt-0.5 text-xs">你仍可查看月曆熱度與最佳時段，但無法新增報名；已加入者仍可修改自己的時段。</p>
+      </div>
+
+      <!-- Current User Nickname & Status Card -->
+      <div id="participantFormCard" class="rounded-3xl bg-white p-4 shadow-soft space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base font-extrabold text-ink">你的參加資訊</h2>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span id="myStatusBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">
+              ✓ 已占名額（同裝置可編輯）
+            </span>
+            <button type="button" id="switchNewParticipantBtn" onclick="switchToNewParticipantMode()" class="hidden rounded-full bg-peach-100 px-2.5 py-1 text-xs font-extrabold text-peach-700 hover:bg-peach-200 active:scale-95 transition">
+              ➕ 以新受邀者身分報名
+            </button>
+            <button type="button" id="switchBackHostBtn" onclick="switchBackToHostMode()" class="hidden rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-ink-soft hover:bg-stone-200 active:scale-95 transition">
+              👑 切換回主辦人
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-bold text-ink-soft">你的暱稱（儲存於本機 LocalStorage Token）</label>
+          <input id="myNicknameInput" type="text" value="" placeholder="輸入你的暱稱（例如：小明）" maxlength="24" class="h-11 w-full rounded-2xl border border-stone-200 px-3.5 text-sm font-semibold focus:border-brand-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <!-- 2-Month Calendar Heatmap -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft">
+        <div class="mb-3 flex items-center justify-between px-1">
+          <div>
+            <h2 class="text-lg font-extrabold text-ink" id="calTitle">月曆時程熱度圖（2 個月）</h2>
+            <p class="text-xs text-ink-mute" id="calSubtitle">點選日期彈出底部抽屜，勾選你有空的時段</p>
+          </div>
+          <div class="flex rounded-xl bg-stone-100 p-0.5 text-xs font-bold">
+            <button onclick="setCalMonth(0)" id="monthBtn0" class="rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm">本月</button>
+            <button onclick="setCalMonth(1)" id="monthBtn1" class="rounded-lg px-2.5 py-1 text-ink-soft">下個月</button>
+          </div>
+        </div>
+
+        <!-- Calendar Grid Container -->
+        <div id="heatmapContainer"></div>
+
+        <!-- Heatmap Legend -->
+        <div class="mt-4 flex items-center justify-between px-1 text-xs text-ink-mute">
+          <div class="flex items-center gap-1.5">
+            <span>少</span>
+            <span class="h-3.5 w-3.5 rounded bg-stone-100"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#F1E6DA]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#E2CDB7]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#CBA98A]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#916545]"></span>
+            <span class="h-3.5 w-3.5 rounded bg-[#503526]"></span>
+            <span>多（最熱門）</span>
+          </div>
+          <span class="flex items-center gap-1 font-semibold">
+            <span class="h-2 w-2 rounded-full bg-peach-400"></span> 我已勾選
+          </span>
+        </div>
+      </div>
+
+      <!-- Top 3 Best Time Slots Leaderboard -->
+      <div id="top3Card" class="rounded-3xl bg-white p-4 shadow-soft">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-lg font-extrabold text-ink">
+            <span>🏆</span> <span id="top3Title">最佳時段排行榜 Top 3</span>
+          </h2>
+          <span class="text-xs text-ink-mute">點擊可查看名單</span>
+        </div>
+        <div id="top3List" class="space-y-2"></div>
+      </div>
+
+      <!-- Location Voting Module -->
+      <div class="rounded-3xl bg-white p-4 shadow-soft">
+        <h2 class="mb-3 flex items-center gap-2 text-lg font-extrabold text-ink">
+          <span>📍</span> <span id="locVoteTitle">地點投票 / 資訊區</span>
+        </h2>
+        <div id="locationVotingContainer" class="space-y-2.5"></div>
+      </div>
+
+      <!-- Host Management Controls & Attendee Roster -->
+      <div class="rounded-3xl border border-brand-100 bg-white p-4 shadow-soft space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-lg font-extrabold text-ink">
+            <span>👑</span> <span id="rosterTitle">參加著名單與主辦人管理</span>
+          </h2>
+          <span id="rosterCountBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-extrabold text-brand-700">--</span>
+        </div>
+        <p id="hostPrivilegeHint" class="rounded-2xl bg-stone-50 px-3 py-2 text-xs text-ink-mute">
+          💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」與「拍板定案（鎖定表單並匯出 .ics）」。
+        </p>
+        <ul id="attendeeList" class="divide-y divide-stone-100"></ul>
+
+        <div id="hostFinalizeBar" class="hidden pt-2">
+          <button onclick="finalizeGathering()" id="finalizeBtn" class="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
+            ✅ 拍板定案（以第一名時段與最高票地點鎖定揪團）
+          </button>
+        </div>
+      </div>
+
+    </div> <!-- End of roomActiveContent -->
+    </section>
+
+    <!-- ==================== VIEW 4: HISTORY DASHBOARD ==================== -->
+    <section id="view-dashboard" class="hidden space-y-4">
+      <div class="rounded-3xl bg-white p-5 shadow-soft space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h1 class="text-xl font-extrabold text-ink">我的揪團紀錄</h1>
+            <p class="text-xs text-ink-mute">註冊成會員之後即可以跨裝置管理活動。</p>
+          </div>
+          <button onclick="renderDashboard(true)" class="shrink-0 rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-bold text-ink-soft hover:bg-stone-200 transition">
+            🔄 同步雲端
+          </button>
+        </div>
+
+        <!-- Account & Storage Status Banner -->
+        <div id="dashboardAuthBanner" class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3.5">
+          <div class="flex items-center gap-3">
+            <div id="dashUserIcon" class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-sm font-extrabold text-brand-800">訪</div>
+            <div>
+              <p id="dashUserTitle" class="text-sm font-extrabold text-ink">目前為訪客模式</p>
+              <p id="dashUserSub" class="text-xs text-ink-mute">現在揪團資料是保存在瀏覽器，註冊會員會將資料保存在雲端資料庫</p>
+            </div>
+          </div>
+          <button id="dashAuthActionBtn" onclick="toggleAuth()" class="rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-brand-700 transition">
+            Google 登入
+          </button>
+        </div>
+
+        <div class="space-y-2 pt-1">
+          <h2 class="text-sm font-extrabold text-brand-700">👑 我主辦的揪團</h2>
+          <div id="hostedRoomsList" class="space-y-2">
+            <div class="rounded-2xl border border-dashed border-stone-200 p-5 text-center text-xs text-ink-mute">
+              尚未發起任何揪團
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2 pt-2">
+          <h2 class="text-sm font-extrabold text-peach-700">🙋 我參加的揪團</h2>
+          <div id="joinedRoomsList" class="space-y-2">
+            <div class="rounded-2xl border border-dashed border-stone-200 p-5 text-center text-xs text-ink-mute">
+              尚未參加任何揪團
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Sticky Submit Bar for Gathering Room -->
+  <div id="stickySubmitBar" class="hidden fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-cream/95 backdrop-blur-md">
+    <div class="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3">
+      <div class="min-w-0">
+        <p id="stickySelectionSummary" class="text-sm font-extrabold text-ink">尚未選擇時段</p>
+        <p id="stickyRoleHint" class="text-xs text-ink-mute">送出時執行原子交易驗證名額上限</p>
+      </div>
+      <button onclick="submitAvailability()" id="submitVoteBtn" class="h-12 shrink-0 rounded-2xl bg-brand-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition">
+        送出報名（占 1 名額）
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MOBILE BOTTOM SHEET (Date Slot Selection) ==================== -->
+  <div id="slotSheetBackdrop" onclick="closeSlotSheet()" class="bottom-sheet-backdrop fixed inset-0 z-40 hidden bg-ink/40 opacity-0"></div>
+  <div id="slotSheetPanel" class="bottom-sheet-panel fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-xl translate-y-full rounded-t-[2rem] bg-cream shadow-float">
+    <div class="mx-auto mt-3 h-1.5 w-12 rounded-full bg-stone-300"></div>
+    <div class="px-5 pb-3 pt-3 flex items-center justify-between">
+      <div>
+        <h3 id="sheetDateTitle" class="text-xl font-extrabold text-ink">11月15日（週日）</h3>
+        <p id="sheetDateSub" class="text-xs text-ink-mute">點選你有空的時段（全天代表所有時段皆可參加）</p>
+      </div>
+      <button onclick="closeSlotSheet()" class="rounded-full bg-stone-200/70 px-3 py-1.5 text-xs font-bold text-ink-soft">關閉</button>
+    </div>
+    <div id="sheetSlotsContainer" class="max-h-[60vh] space-y-2.5 overflow-y-auto px-4 pb-4"></div>
+    <div class="border-t border-stone-200/70 bg-cream px-4 py-3">
+      <button onclick="closeSlotSheet()" class="h-12 w-full rounded-2xl bg-brand-600 text-base font-extrabold text-white active:scale-[.98] transition">
+        完成選擇
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== PASSCODE GATE MODAL ==================== -->
+  <div id="passcodeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/50 p-4">
+    <div class="w-full max-w-sm rounded-3xl bg-white p-5 shadow-float space-y-4 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-peach-100 text-2xl">🔐</div>
+      <div>
+        <h3 class="text-lg font-extrabold text-ink">請輸入房間參加密碼</h3>
+        <p class="mt-1 text-xs text-ink-mute">此揪團受密碼保護，請輸入主辦人設定的密碼：</p>
+      </div>
+      <input id="passcodePromptInput" type="password" maxlength="8" placeholder="輸入密碼" class="h-12 w-full rounded-2xl border border-stone-200 text-center text-lg font-extrabold tracking-widest focus:border-brand-500 focus:outline-none" />
+      <p id="passcodeError" class="hidden text-xs font-bold text-red-600">密碼錯誤，請再試一次！</p>
+      <button onclick="verifyRoomPasscode()" class="h-12 w-full rounded-2xl bg-brand-600 text-sm font-extrabold text-white">解鎖進入房間</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity duration-200"></div>
+
+  <script>
+    // ==================== STATE & DATA ====================
+    const SLOTS = [
+      { id: 'ALL_DAY', label: { 'zh-TW': '全天皆可', en: 'All Day', ja: '終日OK' }, sub: '09:00 - 22:00' },
+      { id: 'MORNING', label: { 'zh-TW': '上午', en: 'Morning', ja: '午前' }, sub: '09:00 - 12:00' },
+      { id: 'AFTERNOON', label: { 'zh-TW': '下午', en: 'Afternoon', ja: '午後' }, sub: '13:00 - 17:00' },
+      { id: 'EVENING', label: { 'zh-TW': '晚上', en: 'Evening', ja: '夜' }, sub: '18:00 - 22:00' }
+    ];
+
+    const HEAT_RAMP = [
+      null,
+      { bg: '#F1E6DA', fg: '#3E291E' },
+      { bg: '#E2CDB7', fg: '#3E291E' },
+      { bg: '#CBA98A', fg: '#332218' },
+      { bg: '#916545', fg: '#FFFFFF' },
+      { bg: '#503526', fg: '#FFFFFF' }
+    ];
+
+    const STORAGE_PREFIX = 'squadup_room_';
+    const RECENT_ROOM_KEY = 'squadup_recent_room_id';
+
+    var state = window.state = {
+      lang: 'zh-TW',
+      isMember: false,
+      user: null, // { uid, displayName, email, photoURL, isMock }
+      cloudConnected: false,
+      cloudRoomsCache: [],
+      currentView: 'home',
+      calMonthOffset: 0,
+      activeSheetDate: null,
+      // Identity mode: 'existing' = already joined participant, 'new_guest' = unjoined visitor
+      viewerMode: 'existing',
+      event: null
+    };
+
+    // Persistent device token for Guest mode (LocalStorage Token per spec 3.3.1)
+    function getDeviceToken() {
+      try {
+        let tok = localStorage.getItem('squadup_device_token');
+        if (!tok) {
+          tok = 'p_dev_' + Math.random().toString(36).substring(2, 8);
+          localStorage.setItem('squadup_device_token', tok);
+        }
+        return tok;
+      } catch (e) {
+        return 'p_dev_guest';
+      }
+    }
+
+    // Helper to get YYYY-MM-DD offset from today
+    function dateOffsetStr(days) {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // ==================== REAL LINK & STORAGE ENGINE ====================
+    function generateRoomCode() {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+      let code = 'SQ-';
+      for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    const PUBLIC_WEB_URL = 'https://yachiyao.github.io/SquadUp/';
+
+    function isLocalEnvironment() {
+      const proto = window.location.protocol;
+      const host = window.location.hostname;
+      return proto === 'file:' || !host || host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host.endsWith('.local');
+    }
+
+    function getBaseUrl() {
+      if (isLocalEnvironment()) {
+        return PUBLIC_WEB_URL;
+      }
+      return window.location.href.split('#')[0].split('?')[0];
+    }
+
+    // UTF-8 & URL-safe Base64 payload encoder (avoids '+' turning into space in URLSearchParams)
+    function encodeRoomPayload(room) {
+      try {
+        const cleanParticipants = (room.participants || []).filter(p => p.id !== 'p_new_visitor');
+        const cleanVotes = (room.votes || []).filter(v => v.participantId !== 'p_new_visitor');
+        const compact = {
+          id: room.id,
+          t: room.title,
+          h: room.hostNickname,
+          m: room.maxParticipants,
+          e: room.expiryDays,
+          p: room.passcode || '',
+          sm: room.storageMode === 'cloud' ? 1 : 0,
+          hu: room.hostUid || '',
+          f: room.isFinalized ? 1 : 0,
+          fd: room.finalDate || null,
+          fs: room.finalSlot || null,
+          fl: room.finalLocation || null,
+          ua: Number(room.updatedAt) || Date.now(),
+          au: room.actorUpdatedAt || {},
+          ki: room.kickedIds || {},
+          l: (room.locations || []).map(l => ({ id: l.id, n: l.name, m: l.mapUrl || '', s: l.notes || '' })),
+          pts: cleanParticipants.map(p => ({ id: p.id, n: p.nickname, h: p.isHost ? 1 : 0, l: p.locationId || null })),
+          v: cleanVotes.map(v => ({ p: v.participantId, d: v.date, s: v.slot }))
+        };
+        const jsonStr = JSON.stringify(compact);
+        const stdB64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+        return stdB64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      } catch (err) {
+        console.error('Encode payload failed:', err);
+        return '';
+      }
+    }
+
+    // UTF-8 & URL-safe Base64 payload decoder
+    function decodeRoomPayload(b64) {
+      if (!b64) return null;
+      try {
+        let normalized = String(b64).trim().replace(/\s/g, '+').replace(/-/g, '+').replace(/_/g, '/');
+        while (normalized.length % 4 !== 0) {
+          normalized += '=';
+        }
+        const jsonStr = decodeURIComponent(Array.prototype.map.call(atob(normalized), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        const compact = JSON.parse(jsonStr);
+        return {
+          id: compact.id,
+          title: compact.t,
+          hostNickname: compact.h,
+          maxParticipants: Number(compact.m) || 20,
+          expiryDays: Number(compact.e) || 7,
+          passcode: compact.p || '',
+          storageMode: compact.sm ? 'cloud' : 'local',
+          hostUid: compact.hu || '',
+          passcodeUnlocked: !compact.p,
+          isFinalized: Boolean(compact.f),
+          finalDate: compact.fd || null,
+          finalSlot: compact.fs || null,
+          finalLocation: compact.fl || null,
+          updatedAt: Number(compact.ua) || 0,
+          actorUpdatedAt: compact.au || {},
+          kickedIds: compact.ki || {},
+          locations: (compact.l || []).map(l => ({ id: l.id, name: l.n, mapUrl: l.m, notes: l.s })),
+          participants: (compact.pts || []).map(p => ({ id: p.id, nickname: p.n, isHost: Boolean(p.h), locationId: p.l })),
+          votes: (compact.v || []).map(v => ({ participantId: v.p, date: v.d, slot: v.s }))
+        };
+      } catch (err) {
+        console.error('Decode payload failed:', err);
+        return null;
+      }
+    }
+
+    // CRDT-style room state merger so concurrent / sequential participant updates never overwrite each other
+    function mergeRoomStates(roomA, roomB) {
+      if (!roomA) return roomB ? JSON.parse(JSON.stringify(roomB)) : null;
+      if (!roomB) return JSON.parse(JSON.stringify(roomA));
+      if (roomA.id !== roomB.id) return JSON.parse(JSON.stringify(roomB));
+
+      const tsA = typeof roomA.updatedAt === 'number' ? roomA.updatedAt : (Date.parse(roomA.updatedAt) || 0);
+      const tsB = typeof roomB.updatedAt === 'number' ? roomB.updatedAt : (Date.parse(roomB.updatedAt) || 0);
+      const primary = tsB >= tsA ? roomB : roomA;
+
+      const mergedKickedIds = {};
+      Object.entries(roomA.kickedIds || {}).forEach(([k, v]) => { mergedKickedIds[k] = Number(v) || 1; });
+      Object.entries(roomB.kickedIds || {}).forEach(([k, v]) => {
+        mergedKickedIds[k] = Math.max(mergedKickedIds[k] || 0, Number(v) || 1);
+      });
+
+      const mergedActorUpdatedAt = {};
+      Object.entries(roomA.actorUpdatedAt || {}).forEach(([k, v]) => { mergedActorUpdatedAt[k] = Number(v) || 0; });
+      Object.entries(roomB.actorUpdatedAt || {}).forEach(([k, v]) => {
+        mergedActorUpdatedAt[k] = Math.max(mergedActorUpdatedAt[k] || 0, Number(v) || 0);
+      });
+
+      const isPidKicked = (pid) => {
+        const kickTs = mergedKickedIds[pid] || 0;
+        if (!kickTs) return false;
+        const actTs = mergedActorUpdatedAt[pid] || 0;
+        return kickTs >= actTs;
+      };
+
+      const allPids = [];
+      const addPid = (pid) => {
+        if (!pid || pid === 'p_new_visitor' || isPidKicked(pid)) return;
+        if (!allPids.includes(pid)) allPids.push(pid);
+      };
+      (roomA.participants || []).forEach(p => addPid(p.id));
+      (roomB.participants || []).forEach(p => addPid(p.id));
+
+      const mergedParticipants = allPids.map(pid => {
+        const pA = (roomA.participants || []).find(p => p.id === pid);
+        const pB = (roomB.participants || []).find(p => p.id === pid);
+        if (pA && !pB) return { ...pA };
+        if (pB && !pA) return { ...pB };
+        const actA = Number(roomA.actorUpdatedAt?.[pid]) || tsA;
+        const actB = Number(roomB.actorUpdatedAt?.[pid]) || tsB;
+        return actB >= actA ? { ...pB } : { ...pA };
+      });
+
+      const mergedVotes = [];
+      mergedParticipants.forEach(p => {
+        const pid = p.id;
+        const inA = (roomA.participants || []).some(x => x.id === pid);
+        const inB = (roomB.participants || []).some(x => x.id === pid);
+        const actA = Number(roomA.actorUpdatedAt?.[pid]) || 0;
+        const actB = Number(roomB.actorUpdatedAt?.[pid]) || 0;
+        let sourceRoom = primary;
+        if (inA && !inB) sourceRoom = roomA;
+        else if (inB && !inA) sourceRoom = roomB;
+        else if (actB > actA) sourceRoom = roomB;
+        else if (actA > actB) sourceRoom = roomA;
+
+        (sourceRoom.votes || []).forEach(v => {
+          if (v.participantId === pid) {
+            mergedVotes.push({ participantId: v.participantId, date: v.date, slot: v.slot });
+          }
+        });
+      });
+
+      // Preserve current tab's unsaved draft votes ('p_new_visitor') if any
+      const draftVotes = [
+        ...((roomA.votes || []).filter(v => v.participantId === 'p_new_visitor')),
+        ...((roomB.votes || []).filter(v => v.participantId === 'p_new_visitor'))
+      ];
+      const seenDraft = new Set();
+      draftVotes.forEach(v => {
+        const key = `${v.date}_${v.slot}`;
+        if (!seenDraft.has(key)) {
+          seenDraft.add(key);
+          mergedVotes.push({ participantId: 'p_new_visitor', date: v.date, slot: v.slot });
+        }
+      });
+
+      const isFinalized = Boolean(primary.isFinalized || roomA.isFinalized || roomB.isFinalized);
+      const finalSource = primary.isFinalized ? primary : (roomB.isFinalized ? roomB : roomA);
+
+      return {
+        ...primary,
+        id: primary.id,
+        title: primary.title,
+        hostNickname: mergedParticipants.find(p => p.isHost || p.id === 'p_host')?.nickname || primary.hostNickname,
+        maxParticipants: Number(primary.maxParticipants) || 20,
+        expiryDays: Number(primary.expiryDays) || 7,
+        passcode: primary.passcode || '',
+        passcodeUnlocked: Boolean(roomA.passcodeUnlocked || roomB.passcodeUnlocked || !primary.passcode),
+        storageMode: 'cloud',
+        isFinalized: isFinalized,
+        finalDate: isFinalized ? finalSource.finalDate : null,
+        finalSlot: isFinalized ? finalSource.finalSlot : null,
+        finalLocation: isFinalized ? finalSource.finalLocation : null,
+        updatedAt: Math.max(tsA, tsB),
+        actorUpdatedAt: mergedActorUpdatedAt,
+        kickedIds: mergedKickedIds,
+        locations: primary.locations || roomA.locations || [],
+        participants: mergedParticipants,
+        votes: mergedVotes
+      };
+    }
+
+    function getRoomShareUrl(room) {
+      const base = getBaseUrl();
+      const payload = encodeRoomPayload(room);
+      return `${base}#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`;
+    }
+
+    function updateUrlHash(room) {
+      try {
+        const payload = encodeRoomPayload(room);
+        window.history.replaceState(null, '', `#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`);
+      } catch (e) {
+        console.warn('Could not update history state', e);
+      }
+    }
+
+    // ==================== REAL-TIME CLOUD SYNC ENGINE (ntfy.sh + SSE + LocalStorage) ====================
+    window.CloudSync = {
+      activeRoomId: null,
+      eventSource: null,
+      pollTimer: null,
+
+      getTopic(roomId) {
+        return 'squadup_room_v2_' + String(roomId).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
+      },
+
+      serializeCleanRoom(room) {
+        const copy = JSON.parse(JSON.stringify(room));
+        copy.storageMode = 'cloud';
+        copy.updatedAt = Number(copy.updatedAt) || Date.now();
+        copy.participants = (copy.participants || []).filter(p => p.id !== 'p_new_visitor');
+        copy.votes = (copy.votes || []).filter(v => v.participantId !== 'p_new_visitor');
+        return copy;
+      },
+
+      async publishRoom(room) {
+        if (!room || !room.id || room.id === 'friday-hotpot-88') return false;
+        const topic = this.getTopic(room.id);
+        const clean = this.serializeCleanRoom(room);
+        try {
+          const res = await fetch(`https://ntfy.sh/${topic}`, {
+            method: 'POST',
+            body: JSON.stringify(clean)
+          });
+          if (res.ok) {
+            state.cloudConnected = true;
+            return true;
+          }
+        } catch (err) {
+          console.warn('CloudSync publishRoom notice:', err.message);
+        }
+        return false;
+      },
+
+      async fetchRoom(roomId) {
+        if (!roomId || roomId === 'friday-hotpot-88') return null;
+        const topic = this.getTopic(roomId);
+        try {
+          const res = await fetch(`https://ntfy.sh/${topic}/json?poll=1&since=all&_t=${Date.now()}`, {
+            cache: 'no-store'
+          });
+          if (!res.ok) return null;
+          const text = await res.text();
+          if (!text || !text.trim()) return null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          let merged = null;
+          for (const line of lines) {
+            try {
+              const ev = JSON.parse(line);
+              if (ev.event === 'message' && ev.message) {
+                const snap = JSON.parse(ev.message);
+                if (snap && snap.id === roomId) {
+                  merged = merged ? mergeRoomStates(merged, snap) : snap;
+                }
+              }
+            } catch (e) {}
+          }
+          if (merged) {
+            merged.storageMode = 'cloud';
+            state.cloudConnected = true;
+          }
+          return merged;
+        } catch (err) {
+          console.warn('CloudSync fetchRoom notice:', err.message);
+          return null;
+        }
+      },
+
+      applyIncomingRoomSnapshot(incomingRoom, showUpdateNotice = false) {
+        if (!incomingRoom || !incomingRoom.id) return;
+        const prevLocal = loadRoomFromStorage(incomingRoom.id);
+        const base = (state.event && state.event.id === incomingRoom.id) ? state.event : prevLocal;
+        const prevCount = base?.participants?.length || 0;
+        const prevVotesLen = (base?.votes || []).filter(v => v.participantId !== 'p_new_visitor').length;
+        const prevUpdatedAt = Number(base?.updatedAt) || 0;
+
+        const merged = base ? mergeRoomStates(base, incomingRoom) : incomingRoom;
+        merged.storageMode = 'cloud';
+
+        try {
+          localStorage.setItem(STORAGE_PREFIX + merged.id, JSON.stringify(merged));
+          localStorage.setItem(RECENT_ROOM_KEY, merged.id);
+        } catch (e) {}
+
+        if (state.event && state.event.id === merged.id) {
+          const newCount = merged.participants?.length || 0;
+          const newVotesLen = (merged.votes || []).filter(v => v.participantId !== 'p_new_visitor').length;
+          const newUpdatedAt = Number(merged.updatedAt) || 0;
+          const hasChanged = newCount !== prevCount || newVotesLen !== prevVotesLen || newUpdatedAt > prevUpdatedAt || merged.isFinalized !== base?.isFinalized;
+
+          state.event = merged;
+          updateUrlHash(merged);
+          renderRoom();
+          updateRecentRoomCard();
+
+          if (showUpdateNotice && hasChanged) {
+            if (newCount > prevCount) {
+              const newest = merged.participants[merged.participants.length - 1];
+              showToast(`🔔 新成員「${newest?.nickname || '參加者'}」已加入揪團！（目前 ${newCount}/${merged.maxParticipants} 人）`);
+            } else {
+              showToast('🔔 已即時同步參加者的最新時段與投票回覆！');
+            }
+          }
+        }
+      },
+
+      subscribe(roomId) {
+        if (!roomId || roomId === 'friday-hotpot-88') return;
+        if (this.activeRoomId === roomId && this.eventSource) return;
+
+        this.unsubscribe();
+        this.activeRoomId = roomId;
+        const topic = this.getTopic(roomId);
+
+        // 1. Immediate fetch of full cloud history
+        this.fetchRoom(roomId).then(cloudRoom => {
+          if (cloudRoom) {
+            this.applyIncomingRoomSnapshot(cloudRoom, false);
+          } else if (state.event && state.event.id === roomId) {
+            // Seed cloud topic if not yet in cloud
+            this.publishRoom(state.event);
+          }
+        });
+
+        // 2. Real-time Server-Sent Events (SSE) stream
+        if (typeof EventSource !== 'undefined') {
+          try {
+            const es = new EventSource(`https://ntfy.sh/${topic}/sse`);
+            es.onmessage = (e) => {
+              try {
+                const data = JSON.parse(e.data);
+                if (data.event === 'message' && data.message) {
+                  const snap = JSON.parse(data.message);
+                  if (snap && snap.id === roomId) {
+                    this.applyIncomingRoomSnapshot(snap, true);
+                  }
+                }
+              } catch (err) {}
+            };
+            this.eventSource = es;
+          } catch (err) {
+            console.warn('EventSource subscribe notice:', err.message);
+          }
+        }
+
+        // 3. Periodic background poll fallback (every 3.5s) to guarantee delivery across strict networks
+        this.pollTimer = setInterval(() => {
+          if (state.currentView === 'room' && state.event && state.event.id === roomId) {
+            this.fetchRoom(roomId).then(cloudRoom => {
+              if (cloudRoom) {
+                this.applyIncomingRoomSnapshot(cloudRoom, true);
+              }
+            });
+          }
+        }, 3500);
+      },
+
+      unsubscribe() {
+        if (this.eventSource) {
+          try { this.eventSource.close(); } catch (e) {}
+          this.eventSource = null;
+        }
+        if (this.pollTimer) {
+          clearInterval(this.pollTimer);
+          this.pollTimer = null;
+        }
+        this.activeRoomId = null;
+      }
+    };
+
+    // Listen to localStorage changes across tabs in the same browser for 0ms instant multi-tab sync
+    window.addEventListener('storage', (e) => {
+      if (!e.key || !e.newValue) return;
+      if (state.event && e.key === STORAGE_PREFIX + state.event.id) {
+        try {
+          const incoming = JSON.parse(e.newValue);
+          if (incoming && incoming.id === state.event.id) {
+            window.CloudSync.applyIncomingRoomSnapshot(incoming, true);
+          }
+        } catch (err) {}
+      }
+    });
+
+    // Also sync immediately when user switches back to the browser tab/window
+    window.addEventListener('focus', () => {
+      if (state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+        window.CloudSync.fetchRoom(state.event.id).then(cloudRoom => {
+          if (cloudRoom) window.CloudSync.applyIncomingRoomSnapshot(cloudRoom, false);
+        });
+      }
+    });
+
+    function saveRoomToStorage(room, skipCloud = false) {
+      if (!room || !room.id) return;
+      room.storageMode = 'cloud';
+      room.updatedAt = Number(room.updatedAt) || Date.now();
+      try {
+        const existingLocal = loadRoomFromStorage(room.id);
+        const toSave = existingLocal ? mergeRoomStates(existingLocal, room) : room;
+        state.event = (state.event && state.event.id === room.id) ? toSave : state.event;
+        localStorage.setItem(STORAGE_PREFIX + room.id, JSON.stringify(toSave));
+        localStorage.setItem(RECENT_ROOM_KEY, room.id);
+        room = toSave;
+      } catch (e) {
+        console.warn('LocalStorage save failed', e);
+      }
+      if (!skipCloud && room.id && room.id !== 'friday-hotpot-88') {
+        window.CloudSync.publishRoom(room);
+        if (window.FirebaseBridge?.saveRoomToCloud) {
+          window.FirebaseBridge.saveRoomToCloud(room);
+        } else {
+          window.__pendingCloudSyncRoom = room;
+        }
+      }
+      updateRecentRoomCard();
+    }
+
+    function loadRoomFromStorage(roomId) {
+      try {
+        const data = localStorage.getItem(STORAGE_PREFIX + roomId);
+        if (data) return JSON.parse(data);
+      } catch (e) {
+        console.warn('LocalStorage load failed', e);
+      }
+      return null;
+    }
+
+    function updateRecentRoomCard() {
+      const emptyEl = document.getElementById('recentRoomEmpty');
+      const cardBtn = document.getElementById('recentRoomCardBtn');
+      const recentTitle = document.getElementById('recentRoomTitle');
+      const recentHost = document.getElementById('recentRoomHost');
+      const homeLiveCount = document.getElementById('homeLiveCount');
+      const storageLabel = document.getElementById('recentRoomStorageLabel');
+      const storageBadge = document.getElementById('recentRoomStorageBadge');
+
+      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
+      let targetRoom = null;
+      if (recentId && recentId !== 'friday-hotpot-88') {
+        targetRoom = loadRoomFromStorage(recentId);
+      }
+      if (!targetRoom && state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+        targetRoom = state.event;
+      }
+
+      if (targetRoom) {
+        if (emptyEl) emptyEl.classList.add('hidden');
+        if (cardBtn) {
+          cardBtn.classList.remove('hidden');
+          cardBtn.classList.add('flex');
+        }
+        if (recentTitle) recentTitle.textContent = targetRoom.title || '--';
+        if (recentHost) recentHost.textContent = targetRoom.hostNickname || '--';
+        if (homeLiveCount) homeLiveCount.textContent = `${targetRoom.participants?.length || 0} / ${targetRoom.maxParticipants || 20}`;
+        if (storageLabel) {
+          storageLabel.textContent = targetRoom.storageMode === 'cloud'
+            ? '最近開啟的房間（雲端即時同步）'
+            : '最近開啟的房間（LocalStorage 訪客暫存）';
+        }
+        if (storageBadge) {
+          storageBadge.classList.remove('hidden');
+          storageBadge.textContent = targetRoom.storageMode === 'cloud' ? '☁️ Cloud Sync' : '📦 LocalStorage';
+        }
+      } else {
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (cardBtn) {
+          cardBtn.classList.add('hidden');
+          cardBtn.classList.remove('flex');
+        }
+        if (storageLabel) storageLabel.textContent = '最近開啟的房間';
+        if (storageBadge) storageBadge.classList.add('hidden');
+      }
+    }
+
+    // Per-tab actor storage (sessionStorage survives page refreshes in the same tab, but is empty in a new tab!)
+    function getTabActorForRoom(roomId) {
+      try {
+        return sessionStorage.getItem('squadup_tab_actor_' + roomId) || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function setTabActorForRoom(roomId, actorId) {
+      try {
+        if (actorId) {
+          sessionStorage.setItem('squadup_tab_actor_' + roomId, actorId);
+        } else {
+          sessionStorage.removeItem('squadup_tab_actor_' + roomId);
+        }
+      } catch (e) {}
+    }
+
+    function determineViewerIdentityForRoom(room, isHostViewer = false, openedViaShareLink = false) {
+      if (isHostViewer) {
+        setTabActorForRoom(room.id, 'p_host');
+        const hostP = (room.participants || []).find(p => p.isHost || p.id === 'p_host');
+        return { mode: 'existing', actorId: 'p_host', nickname: hostP?.nickname || room.hostNickname || '主辦人' };
+      }
+
+      // 1. If this tab already has an assigned actor ID in sessionStorage (e.g. across page refreshes F5 in the same tab)
+      const tabActor = getTabActorForRoom(room.id);
+      if (tabActor) {
+        if (tabActor === 'p_new_visitor') {
+          return { mode: 'new_guest', actorId: 'p_new_visitor', nickname: '' };
+        }
+        const foundTabP = (room.participants || []).find(p => p.id === tabActor);
+        if (foundTabP) {
+          return { mode: 'existing', actorId: foundTabP.id, nickname: foundTabP.nickname };
+        }
+      }
+
+      const isCreatorByLocal = localStorage.getItem('squadup_host_of_' + room.id) === '1';
+      const isCreatorByUid = Boolean(room.hostUid && state.user?.uid && room.hostUid === state.user.uid);
+
+      // 2. If opened via a share link in a brand-new tab:
+      //    - If this browser is the host's browser (testing invite link in Tab 2), start Tab 2 as a new invitee!
+      //    - If this browser is a separate invitee device that already joined this room earlier, restore their saved pid.
+      if (openedViaShareLink) {
+        if (!isCreatorByLocal && !isCreatorByUid) {
+          const savedMyPid = localStorage.getItem('squadup_my_pid_' + room.id);
+          if (savedMyPid) {
+            const foundSaved = (room.participants || []).find(p => p.id === savedMyPid);
+            if (foundSaved) {
+              setTabActorForRoom(room.id, foundSaved.id);
+              return { mode: 'existing', actorId: foundSaved.id, nickname: foundSaved.nickname };
+            }
+          }
+        }
+        setTabActorForRoom(room.id, 'p_new_visitor');
+        return { mode: 'new_guest', actorId: 'p_new_visitor', nickname: '' };
+      }
+
+      // 3. Not opened via share link (e.g. clicked from Recent Room or History Dashboard)
+      if (isCreatorByUid || isCreatorByLocal) {
+        setTabActorForRoom(room.id, 'p_host');
+        const hostP = (room.participants || []).find(p => p.isHost || p.id === 'p_host');
+        return { mode: 'existing', actorId: 'p_host', nickname: hostP?.nickname || room.hostNickname || '主辦人' };
+      }
+
+      const savedMyPid = localStorage.getItem('squadup_my_pid_' + room.id);
+      if (savedMyPid) {
+        const foundSaved = (room.participants || []).find(p => p.id === savedMyPid);
+        if (foundSaved) {
+          setTabActorForRoom(room.id, foundSaved.id);
+          return { mode: 'existing', actorId: foundSaved.id, nickname: foundSaved.nickname };
+        }
+      }
+
+      setTabActorForRoom(room.id, 'p_new_visitor');
+      return { mode: 'new_guest', actorId: 'p_new_visitor', nickname: state.user?.displayName || '' };
+    }
+
+    function loadRoomIntoState(room, isHostViewer = false, fromRealtimeSnapshot = false, openedViaShareLink = false) {
+      const prevUnlocked = window.__unlockedRooms?.[room.id] || false;
+      const existingLocal = loadRoomFromStorage(room.id);
+      const mergedRoom = existingLocal ? mergeRoomStates(existingLocal, room) : room;
+      state.event = mergedRoom;
+
+      if (!fromRealtimeSnapshot) {
+        const identity = determineViewerIdentityForRoom(mergedRoom, isHostViewer, openedViaShareLink);
+        state.viewerMode = identity.mode;
+        const nickInput = document.getElementById('myNicknameInput');
+        if (nickInput) nickInput.value = identity.nickname;
+      } else {
+        // Keep current tab's identity in sync if their participant record exists
+        const tabActor = getTabActorForRoom(mergedRoom.id);
+        if (tabActor && tabActor !== 'p_new_visitor') {
+          const found = (mergedRoom.participants || []).find(p => p.id === tabActor);
+          if (found) {
+            state.viewerMode = 'existing';
+          } else {
+            // Was kicked by host
+            setTabActorForRoom(mergedRoom.id, 'p_new_visitor');
+            state.viewerMode = 'new_guest';
+          }
+        }
+      }
+
+      state.event.passcodeUnlocked = !mergedRoom.passcode || isHostViewer || prevUnlocked;
+      saveRoomToStorage(state.event, true);
+      renderRoom();
+
+      // Subscribe to real-time CloudSync & Firestore updates
+      if (!fromRealtimeSnapshot && mergedRoom.id !== 'friday-hotpot-88') {
+        window.CloudSync.subscribe(mergedRoom.id);
+        if (window.FirebaseBridge?.subscribeToRoom) {
+          window.FirebaseBridge.subscribeToRoom(mergedRoom.id);
+        }
+      }
+    }
+
+    // Create form candidate locations draft
+    let createLocationsDraft = [
+      { name: '', mapUrl: '', notes: '' }
+    ];
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 2800);
+    }
+
+    // ==================== I18N ====================
+    const I18N = {
+      'zh-TW': {
+        brand: '揪一下',
+        subtitle: '線上即時聚會協調',
+        badge: '✨ 免註冊即可快速發起',
+        heroTitle: '揪一下，輕鬆喬好聚會時間與地點。',
+        heroSub: '建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。',
+        createCta: '我是主辦人 · 發起新揪團',
+        joinLabel: '輸入揪團代碼或連結進入',
+        joinBtn: '參加揪團',
+        tabs: ['1. 首頁', '2. 發起揪團', '3. 揪團房間', '4. 歷史紀錄']
+      },
+      en: {
+        brand: 'Squad Up',
+        subtitle: 'Real-time online gathering coordination',
+        badge: '✨ No sign-up required',
+        heroTitle: 'Squad up in a snap — pick the day, pick the place.',
+        heroSub: 'Create a gathering, share one link on LINE or Discord, and watch free days light up.',
+        createCta: "I'm the host · Start a gathering",
+        joinLabel: 'Enter a gathering code or link',
+        joinBtn: 'Join gathering',
+        tabs: ['1. Home', '2. Create', '3. Room', '4. History']
+      },
+      ja: {
+        brand: 'スコッドアップ',
+        subtitle: 'オンラインでリアルタイムに集まりを調整',
+        badge: '✨ 登録不要ですぐ使える',
+        heroTitle: 'さくっと集まろう。日程も場所もすぐ決まる。',
+        heroSub: '募集を作ってLINEやDiscordで共有。みんなの空き日がカレンダーに色づきます。',
+        createCta: '幹事になる · 新しい募集を作成',
+        joinLabel: '募集コードまたはリンクを入力',
+        joinBtn: '募集に参加',
+        tabs: ['1. ホーム', '2. 募集作成', '3. ルーム', '4. 履歴']
+      }
+    };
+
+    function setLang(lang) {
+      state.lang = lang;
+      document.documentElement.lang = lang;
+      ['zh-TW', 'en', 'ja'].forEach(l => {
+        const btn = document.getElementById('lang-' + l);
+        if (l === lang) {
+          btn.className = 'rounded-full px-2.5 py-1.5 transition bg-brand-600 text-white';
+        } else {
+          btn.className = 'rounded-full px-2.5 py-1.5 transition text-ink-soft';
+        }
+      });
+      const dict = I18N[lang];
+      document.getElementById('brandTitle').textContent = dict.brand;
+      document.getElementById('brandSubtitle').textContent = dict.subtitle;
+      document.getElementById('homeBadge').textContent = dict.badge;
+      document.getElementById('homeHeroTitle').textContent = dict.heroTitle;
+      document.getElementById('homeHeroSub').textContent = dict.heroSub;
+      document.getElementById('homeCreateBtn').textContent = dict.createCta;
+      document.getElementById('homeJoinLabel').textContent = dict.joinLabel;
+      document.getElementById('homeJoinBtn').textContent = dict.joinBtn;
+      ['home', 'create', 'room', 'dashboard'].forEach((v, idx) => {
+        document.getElementById('tab-' + v).textContent = dict.tabs[idx];
+      });
+      renderRoom();
+    }
+
+    function applyAuthState(user) {
+      state.user = user || null;
+      state.isMember = Boolean(user);
+
+      document.getElementById('savedSpotsSection').classList.toggle('hidden', !state.isMember);
+      const dot = document.getElementById('authDot');
+      const label = document.getElementById('authLabel');
+      const avatar = document.getElementById('authAvatar');
+      const createHostInput = document.getElementById('createHost');
+
+      if (state.isMember && user) {
+        dot.className = 'h-2 w-2 rounded-full bg-emerald-500';
+        label.textContent = `${user.displayName || 'Google 會員'} · 登出`;
+        if (user.photoURL && avatar) {
+          avatar.src = user.photoURL;
+          avatar.classList.remove('hidden');
+        } else if (avatar) {
+          avatar.classList.add('hidden');
+        }
+        if (createHostInput && !createHostInput.value.trim()) {
+          createHostInput.value = user.displayName || '主辦人';
+        }
+      } else {
+        dot.className = 'h-2 w-2 rounded-full bg-stone-400';
+        label.textContent = 'Google 登入';
+        if (avatar) avatar.classList.add('hidden');
+        if (state.event && state.event.expiryDays === 30) selectExpiry(7);
+      }
+
+      renderRoom();
+      renderDashboard();
+    }
+
+    function toggleAuth() {
+      if (window.FirebaseBridge?.handleAuthToggle) {
+        window.FirebaseBridge.handleAuthToggle();
+        return;
+      }
+      // Fallback if Firebase SDK is still loading or offline
+      if (state.isMember) {
+        applyAuthState(null);
+        showToast('已登出並切換為免註冊訪客模式（LocalStorage）');
+      } else {
+        applyAuthState({
+          uid: 'member_' + getDeviceToken(),
+          displayName: 'Google 會員',
+          email: 'member@squadup.app',
+          photoURL: '',
+          isMock: true
+        });
+        showToast('已切換為 Google 會員模式（解鎖 30 天效期與雲端同步）');
+      }
+    }
+
+    // ==================== NAVIGATION & DASHBOARD ====================
+    function switchView(view) {
+      state.currentView = view;
+      ['home', 'create', 'room', 'dashboard'].forEach(v => {
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+        const tab = document.getElementById('tab-' + v);
+        if (v === view) {
+          tab.className = 'h-9 rounded-xl transition bg-white text-ink shadow-sm';
+        } else {
+          tab.className = 'h-9 rounded-xl transition text-ink-soft';
+        }
+      });
+
+      const stickySubmitBar = document.getElementById('stickySubmitBar');
+      if (stickySubmitBar) {
+        stickySubmitBar.classList.toggle('hidden', view !== 'room' || !state.event);
+      }
+
+      if (view === 'home') {
+        updateRecentRoomCard();
+      }
+      if (view === 'create') {
+        renderCreateLocations();
+      }
+      if (view === 'room') {
+        if (!state.event) {
+          const recentId = localStorage.getItem(RECENT_ROOM_KEY);
+          if (recentId && recentId !== 'friday-hotpot-88') {
+            const loaded = loadRoomFromStorage(recentId);
+            if (loaded) {
+              loadRoomIntoState(loaded, false);
+            }
+          }
+        }
+
+        if (state.event) {
+          if (state.event.passcode && !state.event.passcodeUnlocked) {
+            document.getElementById('passcodeModal').classList.remove('hidden');
+            document.getElementById('passcodeModal').classList.add('flex');
+          }
+          renderRoom();
+        } else {
+          renderRoom();
+        }
+      }
+      if (view === 'dashboard') {
+        renderDashboard(true);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getAllKnownRooms() {
+      const map = new Map();
+      // 1. Rooms from LocalStorage (exclude demo room unless explicitly created)
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(STORAGE_PREFIX)) {
+            const r = JSON.parse(localStorage.getItem(k));
+            if (r && r.id && r.id !== 'friday-hotpot-88') map.set(r.id, r);
+          }
+        }
+      } catch (e) {}
+      // 2. Rooms from Firestore Cloud Cache
+      if (Array.isArray(state.cloudRoomsCache)) {
+        state.cloudRoomsCache.forEach(r => {
+          if (r && r.id && r.id !== 'friday-hotpot-88') map.set(r.id, r);
+        });
+      }
+      // 3. Current active room: ONLY if it is not the default demo room
+      if (state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+        map.set(state.event.id, state.event);
+      }
+      return [...map.values()];
+    }
+
+    async function openRoomById(roomId) {
+      const all = getAllKnownRooms();
+      let target = all.find(r => r.id === roomId) || null;
+      if (target) {
+        loadRoomIntoState(target, false, false, false);
+        updateUrlHash(target);
+        switchView('room');
+      }
+      if (window.CloudSync?.fetchRoom) {
+        const cloudRoom = await window.CloudSync.fetchRoom(roomId);
+        if (cloudRoom) {
+          const merged = target ? mergeRoomStates(target, cloudRoom) : cloudRoom;
+          loadRoomIntoState(merged, false, false, false);
+          updateUrlHash(merged);
+          switchView('room');
+          return;
+        }
+      }
+      if (!target && window.FirebaseBridge?.loadRoomFromCloud) {
+        window.FirebaseBridge.loadRoomFromCloud(roomId).then(cloudRoom => {
+          if (cloudRoom) {
+            loadRoomIntoState(cloudRoom, false, false, false);
+            updateUrlHash(cloudRoom);
+            switchView('room');
+          }
+        });
+      }
+    }
+
+    function renderDashboard(syncFromCloud = false) {
+      const iconEl = document.getElementById('dashUserIcon');
+      const titleEl = document.getElementById('dashUserTitle');
+      const subEl = document.getElementById('dashUserSub');
+      const actionBtn = document.getElementById('dashAuthActionBtn');
+
+      if (state.isMember && state.user) {
+        if (iconEl) iconEl.textContent = (state.user.displayName || 'G').slice(0, 1);
+        if (titleEl) titleEl.textContent = `${state.user.displayName} (會員)`;
+        if (subEl) subEl.textContent = `${state.user.email ? state.user.email + ' · ' : ''}揪團資料已保存在雲端資料庫，可跨裝置管理`;
+        if (actionBtn) {
+          actionBtn.textContent = '登出帳號';
+          actionBtn.className = 'rounded-xl bg-stone-200 px-3.5 py-2 text-xs font-extrabold text-ink hover:bg-stone-300 transition';
+        }
+      } else {
+        if (iconEl) iconEl.textContent = '訪';
+        if (titleEl) titleEl.textContent = '目前為訪客模式';
+        if (subEl) subEl.textContent = '現在揪團資料是保存在瀏覽器，註冊會員會將資料保存在雲端資料庫';
+        if (actionBtn) {
+          actionBtn.textContent = 'Google 登入';
+          actionBtn.className = 'rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-brand-700 transition';
+        }
+      }
+
+      if (syncFromCloud && window.FirebaseBridge?.fetchCloudRooms) {
+        window.FirebaseBridge.fetchCloudRooms().then(() => {
+          renderDashboardLists();
+        });
+      } else {
+        renderDashboardLists();
+      }
+    }
+
+    function renderDashboardLists() {
+      const hostedContainer = document.getElementById('hostedRoomsList');
+      const joinedContainer = document.getElementById('joinedRoomsList');
+      if (!hostedContainer || !joinedContainer) return;
+
+      const rooms = getAllKnownRooms();
+      const devTok = getDeviceToken();
+      const myUid = state.user?.uid;
+      const myUidActor = myUid ? ('p_u_' + myUid.slice(0, 10)) : null;
+
+      const hosted = [];
+      const joined = [];
+
+      rooms.forEach(r => {
+        if (r.id === 'friday-hotpot-88') return;
+        const isHost = (myUid && r.hostUid === myUid) || localStorage.getItem('squadup_host_of_' + r.id) === '1';
+        if (isHost) {
+          hosted.push(r);
+        } else {
+          const isParticipant = (r.participants || []).some(p => p.id === devTok || (myUidActor && p.id === myUidActor));
+          if (isParticipant) joined.push(r);
+        }
+      });
+
+      if (hosted.length === 0) {
+        hostedContainer.innerHTML = `
+          <div class="rounded-2xl border border-dashed border-stone-200 p-5 text-center">
+            <p class="text-xs text-ink-mute">尚未發起任何揪團</p>
+          </div>
+        `;
+      } else {
+        hostedContainer.innerHTML = hosted.map((r, idx) => {
+          const count = (r.participants || []).length;
+          const max = r.maxParticipants || 6;
+          const isCloud = r.storageMode === 'cloud';
+          const statusText = r.isFinalized ? '🔒 已拍板定案' : '🟢 協調進行中';
+          return `
+            <div onclick="openRoomById('${r.id}')" class="cursor-pointer flex items-center justify-between rounded-2xl border border-stone-200 p-3.5 hover:bg-stone-50 transition">
+              <div class="min-w-0 pr-2">
+                <div class="flex items-center gap-1.5">
+                  <p class="font-bold text-ink truncate">${r.title}</p>
+                  <span class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${isCloud ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-ink-mute'}">
+                    ${isCloud ? '☁️ 雲端' : '📦 本地'}
+                  </span>
+                </div>
+                <p class="mt-0.5 text-xs text-ink-mute">代碼：<span class="font-mono font-bold">${r.id}</span> · 剩餘 ${r.expiryDays || 7} 天 · ${statusText}</p>
+              </div>
+              <span class="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700" ${idx === 0 ? 'id="dashCount"' : ''}>${count} / ${max}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      if (joined.length === 0) {
+        joinedContainer.innerHTML = `
+          <div class="rounded-2xl border border-dashed border-stone-200 p-5 text-center">
+            <p class="text-xs text-ink-mute">尚未參加任何揪團</p>
+          </div>
+        `;
+      } else {
+        joinedContainer.innerHTML = joined.map(r => {
+          const count = (r.participants || []).length;
+          const max = r.maxParticipants || 6;
+          const isCloud = r.storageMode === 'cloud';
+          return `
+            <div onclick="openRoomById('${r.id}')" class="cursor-pointer flex items-center justify-between rounded-2xl border border-stone-200 p-3.5 hover:bg-stone-50 transition">
+              <div class="min-w-0 pr-2">
+                <div class="flex items-center gap-1.5">
+                  <p class="font-bold text-ink truncate">${r.title}</p>
+                  <span class="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${isCloud ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-ink-mute'}">
+                    ${isCloud ? '☁️ 雲端' : '📦 本地'}
+                  </span>
+                </div>
+                <p class="mt-0.5 text-xs text-ink-mute">主辦人：${r.hostNickname} · 代碼：<span class="font-mono font-bold">${r.id}</span></p>
+              </div>
+              <span class="shrink-0 rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700">${count} / ${max}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // ==================== CREATE EVENT FORM ====================
+    function renderCreateLocations() {
+      const container = document.getElementById('createLocationsList');
+      if (createLocationsDraft.length === 0) {
+        container.innerHTML = `<p class="rounded-2xl bg-stone-50 px-3.5 py-3 text-xs text-ink-mute">目前未設定地點（前台將顯示「地點尚未確定」）。點擊下方按鈕新增候選地點。</p>`;
+      } else {
+        container.innerHTML = createLocationsDraft.map((loc, i) => `
+          <div class="rounded-2xl border border-stone-200 p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="rounded-full bg-peach-100 px-2.5 py-0.5 text-xs font-bold text-peach-700">候選地點 ${i + 1}</span>
+              <button type="button" onclick="removeCreateLoc(${i})" class="text-xs font-bold text-red-600 hover:underline">移除</button>
+            </div>
+            <input type="text" value="${loc.name}" onchange="updateCreateLoc(${i}, 'name', this.value)" aria-label="候選地點 ${i + 1} 名稱" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-sm" />
+            <input type="text" value="${loc.notes || ''}" onchange="updateCreateLoc(${i}, 'notes', this.value)" aria-label="候選地點 ${i + 1} 備註" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-xs text-ink-soft" />
+          </div>
+        `).join('');
+      }
+      if (createLocationsDraft.length < 3) {
+        container.innerHTML += `
+          <button type="button" onclick="addSavedSpot('', '')" class="h-11 w-full rounded-2xl border border-dashed border-peach-300 bg-peach-50/50 text-xs font-bold text-peach-700 hover:bg-peach-100">
+            + 新增候選地點 (${createLocationsDraft.length}/3)
+          </button>
+        `;
+      }
+    }
+
+    function addSavedSpot(name, mapUrl) {
+      if (createLocationsDraft.length >= 3) {
+        showToast('最多只能設定 3 個候選地點喔！');
+        return;
+      }
+      createLocationsDraft.push({ name: name || '', mapUrl: mapUrl || '', notes: '' });
+      renderCreateLocations();
+    }
+
+    function removeCreateLoc(idx) {
+      createLocationsDraft.splice(idx, 1);
+      renderCreateLocations();
+    }
+
+    function updateCreateLoc(idx, key, val) {
+      createLocationsDraft[idx][key] = val;
+    }
+
+    function adjustCap(delta) {
+      const input = document.getElementById('createCap');
+      const next = Math.min(20, Math.max(1, (parseInt(input.value, 10) || 20) + delta));
+      input.value = next;
+    }
+
+    function selectExpiry(days) {
+      if (days === 30 && !state.isMember) {
+        showToast('請先點選右上角「Google 登入」解鎖 30 天會員效期！');
+        return;
+      }
+      state.event.expiryDays = days;
+      document.querySelectorAll('.expiry-btn').forEach(btn => {
+        const d = Number(btn.getAttribute('data-days'));
+        if (d === days) {
+          btn.className = 'expiry-btn h-11 rounded-2xl border border-brand-600 bg-brand-600 px-4 text-sm font-semibold text-white';
+        } else {
+          btn.className = 'expiry-btn h-11 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-semibold text-ink-soft';
+        }
+      });
+    }
+
+    function handleCreateEvent(e) {
+      e.preventDefault();
+      const capVal = Number(document.getElementById('createCap').value);
+      const capError = document.getElementById('capError');
+      if (!Number.isInteger(capVal) || capVal < 1 || capVal > 20) {
+        capError.classList.remove('hidden');
+        showToast('人數上限必須為 1～20 的整數！');
+        return;
+      }
+      capError.classList.add('hidden');
+
+      const title = document.getElementById('createTitle').value.trim() || '未命名揪團';
+      const host = document.getElementById('createHost').value.trim() || '主辦人';
+      const passcode = document.getElementById('createPasscode').value.trim();
+
+      const newRoomId = generateRoomCode();
+      const isCloudRoom = Boolean(state.isMember);
+      const selectedExpiryBtn = document.querySelector('.expiry-btn.bg-brand-600');
+      const expiryDays = selectedExpiryBtn ? Number(selectedExpiryBtn.getAttribute('data-days')) : 7;
+      const locList = createLocationsDraft
+        .filter(l => l.name.trim())
+        .map((l, i) => ({ id: 'loc_' + (i + 1), name: l.name.trim(), mapUrl: l.mapUrl, notes: l.notes }));
+
+      const nowTs = Date.now();
+      state.event = {
+        id: newRoomId,
+        title: title,
+        hostNickname: host,
+        maxParticipants: capVal,
+        expiryDays: expiryDays,
+        passcode: passcode,
+        passcodeUnlocked: true,
+        storageMode: 'cloud',
+        hostUid: state.user?.uid || '',
+        hostEmail: state.user?.email || '',
+        createdAt: new Date(nowTs).toISOString(),
+        updatedAt: nowTs,
+        actorUpdatedAt: { p_host: nowTs },
+        kickedIds: {},
+        isFinalized: false,
+        finalDate: null,
+        finalSlot: null,
+        finalLocation: null,
+        locations: locList,
+        participants: [
+          { id: 'p_host', nickname: host, isHost: true, locationId: locList[0]?.id || null }
+        ],
+        votes: []
+      };
+
+      // Mark this browser as host of this room, and bind this tab's actor to p_host
+      try { localStorage.setItem('squadup_host_of_' + newRoomId, '1'); } catch (err) {}
+      setTabActorForRoom(newRoomId, 'p_host');
+      window.__unlockedRooms = window.__unlockedRooms || {};
+      window.__unlockedRooms[newRoomId] = true;
+
+      state.viewerMode = 'existing';
+      const nickInput = document.getElementById('myNicknameInput');
+      if (nickInput) nickInput.value = host;
+
+      // Save room state and publish to CloudSync
+      saveRoomToStorage(state.event);
+      updateUrlHash(state.event);
+
+      window.CloudSync.subscribe(newRoomId);
+      if (window.FirebaseBridge?.subscribeToRoom) {
+        window.FirebaseBridge.subscribeToRoom(newRoomId);
+      }
+
+      switchView('room');
+      showToast(`🎉 已建立揪團 (${newRoomId})！已啟動雲端即時同步，主辦人占 1 名額 (1/${capVal})`);
+    }
+
+    // ==================== ROOM LOGIC & RENDERING ====================
+    function currentActorId() {
+      if (!state.event) return 'p_new_visitor';
+      if (state.viewerMode === 'new_guest') return 'p_new_visitor';
+      const ev = state.event;
+
+      const tabActor = getTabActorForRoom(ev.id);
+      if (tabActor) {
+        if (tabActor === 'p_new_visitor') return 'p_new_visitor';
+        if (ev.participants && ev.participants.some(p => p.id === tabActor)) return tabActor;
+      }
+
+      if ((ev.hostUid && state.user?.uid && ev.hostUid === state.user.uid) || localStorage.getItem('squadup_host_of_' + ev.id) === '1') {
+        if (ev.participants && ev.participants.some(p => p.id === 'p_host')) {
+          setTabActorForRoom(ev.id, 'p_host');
+          return 'p_host';
+        }
+      }
+
+      const savedMyPid = localStorage.getItem('squadup_my_pid_' + ev.id);
+      if (savedMyPid && ev.participants && ev.participants.some(p => p.id === savedMyPid)) {
+        setTabActorForRoom(ev.id, savedMyPid);
+        return savedMyPid;
+      }
+
+      if (state.user?.uid) {
+        const uidActor = 'p_u_' + state.user.uid.slice(0, 10);
+        if (ev.participants && ev.participants.some(p => p.id === uidActor)) {
+          setTabActorForRoom(ev.id, uidActor);
+          return uidActor;
+        }
+      }
+      const devTok = getDeviceToken();
+      if (ev.participants && ev.participants.some(p => p.id === devTok)) {
+        setTabActorForRoom(ev.id, devTok);
+        return devTok;
+      }
+      return 'p_new_visitor';
+    }
+
+    function switchToNewParticipantMode() {
+      if (!state.event) return;
+      if (state.event.isFinalized) {
+        showToast('活動已拍板定案，無法新增參加者！');
+        return;
+      }
+      if (isRoomFull()) {
+        showToast('活動已額滿，無法新增參加者！');
+        return;
+      }
+      setTabActorForRoom(state.event.id, 'p_new_visitor');
+      state.viewerMode = 'new_guest';
+      window.__draftLocId = state.event.locations?.[0]?.id || null;
+      const nickInput = document.getElementById('myNicknameInput');
+      if (nickInput) {
+        nickInput.value = '';
+        nickInput.focus();
+      }
+      renderRoom();
+      showToast('✨ 已切換為「新受邀者視角」！輸入新暱稱並勾選時段後即可送出報名');
+    }
+
+    function switchBackToHostMode() {
+      if (!state.event) return;
+      setTabActorForRoom(state.event.id, 'p_host');
+      state.viewerMode = 'existing';
+      const hostP = (state.event.participants || []).find(p => p.isHost || p.id === 'p_host');
+      const nickInput = document.getElementById('myNicknameInput');
+      if (nickInput) {
+        nickInput.value = hostP?.nickname || state.event.hostNickname || '主辦人';
+      }
+      renderRoom();
+      showToast('👑 已切換回主辦人視角');
+    }
+
+    function isAlreadyJoined() {
+      if (!state.event || !state.event.participants) return false;
+      const id = currentActorId();
+      return state.event.participants.some(p => p.id === id);
+    }
+
+    function isRoomFull() {
+      if (!state.event || !state.event.participants) return false;
+      return state.event.participants.length >= state.event.maxParticipants;
+    }
+
+    function isReadOnly() {
+      if (!state.event) return true;
+      if (state.event.isFinalized) return true;
+      if (!isAlreadyJoined() && isRoomFull()) return true;
+      return false;
+    }
+
+    // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING)
+    function getSlotAttendees(date, slot) {
+      const set = new Set();
+      if (!state.event || !state.event.votes) return [];
+      state.event.votes.forEach(v => {
+        if (v.date !== date) return;
+        if (v.slot === slot || (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY')) {
+          set.add(v.participantId);
+        }
+      });
+      return [...set];
+    }
+
+    function getDateBestOverlap(date) {
+      let best = 0;
+      ['MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+        const count = getSlotAttendees(date, slot).length;
+        if (count > best) best = count;
+      });
+      return best;
+    }
+
+    function computeTop3() {
+      if (!state.event || !state.event.votes) return [];
+      const dates = [...new Set(state.event.votes.map(v => v.date))].sort();
+      const candidates = [];
+      dates.forEach(date => {
+        ['ALL_DAY', 'MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+          const ids = getSlotAttendees(date, slot);
+          if (ids.length >= 2) {
+            candidates.push({ date, slot, count: ids.length, ids });
+          }
+        });
+      });
+      candidates.sort((a, b) => b.count - a.count || a.date.localeCompare(b.date));
+      const picked = [];
+      for (const c of candidates) {
+        if (picked.length >= 3) break;
+        if (picked.some(p => p.date === c.date && p.count === c.count && p.ids.length === c.ids.length)) continue;
+        picked.push(c);
+      }
+      return picked;
+    }
+
+    function renderRoom() {
+      const emptyEl = document.getElementById('roomEmptyState');
+      const activeEl = document.getElementById('roomActiveContent');
+      const stickyBar = document.getElementById('stickySubmitBar');
+
+      if (!state.event) {
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (activeEl) activeEl.classList.add('hidden');
+        if (stickyBar) stickyBar.classList.add('hidden');
+        return;
+      }
+
+      if (emptyEl) emptyEl.classList.add('hidden');
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (stickyBar && state.currentView === 'room') {
+        stickyBar.classList.remove('hidden');
+      }
+
+      const ev = state.event;
+      const count = ev.participants.length;
+      const max = ev.maxParticipants;
+      const full = count >= max;
+      const joined = isAlreadyJoined();
+      const readOnly = isReadOnly();
+      const actorId = currentActorId();
+
+      // Update header & badges
+      document.getElementById('roomTitle').textContent = ev.title;
+      const recentTitleEl = document.getElementById('recentRoomTitle');
+      if (recentTitleEl) recentTitleEl.textContent = ev.title;
+      document.getElementById('roomHost').textContent = ev.hostNickname;
+      const homeLiveCountEl = document.getElementById('homeLiveCount');
+      if (homeLiveCountEl) homeLiveCountEl.textContent = `${count} / ${max}`;
+      const dashCountEl = document.getElementById('dashCount');
+      if (dashCountEl) dashCountEl.textContent = `${count} / ${max}`;
+      const rosterBadgeEl = document.getElementById('rosterCountBadge');
+      if (rosterBadgeEl) rosterBadgeEl.textContent = `${count} / ${max}`;
+
+      // Update inline share URL, room code & OG preview inside Gathering Room tab
+      updateInlineShareInfo();
+
+      const capBadge = document.getElementById('capacityBadge');
+      if (full) {
+        capBadge.className = 'inline-flex items-center gap-1 rounded-full bg-peach-100 px-3 py-1 text-xs font-extrabold text-peach-700';
+        capBadge.textContent = `🈵 已額滿 Full (${count}/${max})`;
+      } else {
+        capBadge.className = 'inline-flex items-center gap-1 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700';
+        capBadge.textContent = `👥 參加人數：${count} / ${max}`;
+      }
+
+      document.getElementById('expiryBadge').textContent = `⏳ 剩餘 ${ev.expiryDays} 天`;
+      const storageBadge = document.getElementById('storageBadge');
+      if (storageBadge) {
+        if (ev.storageMode === 'cloud') {
+          storageBadge.className = 'inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700';
+          storageBadge.textContent = '☁️ Firebase 雲端即時同步';
+        } else {
+          storageBadge.className = 'inline-flex items-center gap-1 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-ink-soft';
+          storageBadge.textContent = '📦 訪客 LocalStorage';
+        }
+      }
+      document.getElementById('finalizedBadge').classList.toggle('hidden', !ev.isFinalized);
+      document.getElementById('finalizedBadge').classList.toggle('inline-flex', ev.isFinalized);
+      document.getElementById('finalizedCard').classList.toggle('hidden', !ev.isFinalized);
+
+      // Full alert banner for unjoined visitors
+      const fullBanner = document.getElementById('fullAlertBanner');
+      if (!ev.isFinalized && full && !joined) {
+        fullBanner.classList.remove('hidden');
+        document.getElementById('fullAlertTitle').textContent = `⚠️ 活動已額滿（${count}/${max}）— 尚未報名者僅供檢視`;
+      } else {
+        fullBanner.classList.add('hidden');
+      }
+
+      // Identity status badge & switcher buttons
+      const statusBadge = document.getElementById('myStatusBadge');
+      const switchNewBtn = document.getElementById('switchNewParticipantBtn');
+      const switchHostBtn = document.getElementById('switchBackHostBtn');
+      const isCreatorBrowser = localStorage.getItem('squadup_host_of_' + ev.id) === '1' || Boolean(ev.hostUid && state.user?.uid && ev.hostUid === state.user.uid);
+      const myRecord = ev.participants.find(p => p.id === actorId);
+
+      if (joined && myRecord) {
+        statusBadge.className = 'rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700';
+        statusBadge.textContent = myRecord.isHost
+          ? `👑 主辦人視角（${myRecord.nickname}）`
+          : `✓ 已報名參加（${myRecord.nickname}）`;
+      } else {
+        statusBadge.className = 'rounded-full bg-peach-100 px-2.5 py-0.5 text-xs font-bold text-peach-700';
+        statusBadge.textContent = '✨ 新受邀者視角（尚未送出報名，不占名額）';
+      }
+
+      if (switchNewBtn) {
+        switchNewBtn.classList.toggle('hidden', !joined || ev.isFinalized || full);
+      }
+      if (switchHostBtn) {
+        switchHostBtn.classList.toggle('hidden', !isCreatorBrowser || actorId === 'p_host');
+      }
+
+      // Sticky bar button text
+      const myVotesCount = ev.votes.filter(v => v.participantId === actorId).length;
+      document.getElementById('stickySelectionSummary').textContent = readOnly
+        ? (ev.isFinalized ? '🔒 揪團已拍板定案鎖定' : `🈵 活動已額滿 (${count}/${max})`)
+        : `目前已勾選 ${myVotesCount} 個時段`;
+      const submitBtn = document.getElementById('submitVoteBtn');
+      submitBtn.textContent = joined ? '更新我的回覆' : '送出報名（占 1 名額）';
+      submitBtn.disabled = ev.isFinalized;
+      submitBtn.className = ev.isFinalized
+        ? 'h-12 shrink-0 rounded-2xl bg-stone-300 px-6 text-sm font-extrabold text-white cursor-not-allowed'
+        : 'h-12 shrink-0 rounded-2xl bg-brand-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition';
+
+      renderCalendarHeatmap();
+      renderTop3Leaderboard();
+      renderLocationVoting();
+      renderAttendeeRoster();
+    }
+
+    function setCalMonth(offset) {
+      state.calMonthOffset = offset;
+      document.getElementById('monthBtn0').className = offset === 0 ? 'rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm' : 'rounded-lg px-2.5 py-1 text-ink-soft';
+      document.getElementById('monthBtn1').className = offset === 1 ? 'rounded-lg px-2.5 py-1 bg-white text-ink shadow-sm' : 'rounded-lg px-2.5 py-1 text-ink-soft';
+      renderCalendarHeatmap();
+    }
+
+    function renderCalendarHeatmap() {
+      const container = document.getElementById('heatmapContainer');
+      const now = new Date();
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() + state.calMonthOffset, 1);
+      const year = targetMonth.getFullYear();
+      const month = targetMonth.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const lead = targetMonth.getDay();
+      const todayStr = dateOffsetStr(0);
+      const actorId = currentActorId();
+
+      // Find global max overlap for relative heatmap scaling
+      let maxOverlap = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const c = getDateBestOverlap(dateStr);
+        if (c > maxOverlap) maxOverlap = c;
+      }
+
+      const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+      let html = `
+        <div class="mb-2 px-1 text-sm font-extrabold text-ink">${year} 年 ${month + 1} 月</div>
+        <div class="grid grid-cols-7 gap-1">
+          ${weekdays.map(w => `<div class="pb-1 text-center text-xs font-bold text-ink-mute">${w}</div>`).join('')}
+          ${Array.from({ length: lead }, () => `<div></div>`).join('')}
+      `;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isPast = dateStr < todayStr;
+        const overlap = getDateBestOverlap(dateStr);
+        const hasMine = state.event.votes.some(v => v.date === dateStr && v.participantId === actorId);
+        const isFinal = state.event.finalDate === dateStr;
+
+        let level = 0;
+        if (overlap > 0 && maxOverlap > 0) {
+          const ratio = maxOverlap === 1 ? 0.5 : overlap / maxOverlap;
+          level = Math.max(1, Math.min(5, Math.ceil(ratio * 5)));
+        }
+        const style = level > 0 && !isPast
+          ? `background-color:${HEAT_RAMP[level].bg};color:${HEAT_RAMP[level].fg};`
+          : '';
+
+        html += `
+          <button
+            type="button"
+            ${isPast ? 'disabled' : `onclick="openSlotSheet('${dateStr}')"`}
+            style="${style}"
+            class="relative flex aspect-square min-h-[44px] flex-col items-center justify-center rounded-xl text-sm font-bold transition ${
+              isPast
+                ? 'cursor-default text-stone-300'
+                : level === 0
+                  ? 'bg-stone-50 text-ink hover:bg-stone-100 active:scale-95'
+                  : ' active:scale-95'
+            } ${isFinal ? 'ring-2 ring-peach-500 ring-offset-1' : ''}"
+          >
+            <span class="leading-none">${day}</span>
+            ${overlap > 0 && !isPast ? `<span class="mt-0.5 text-[10px] font-extrabold leading-none opacity-85">${overlap}人</span>` : ''}
+            ${hasMine && !isPast ? `<span class="absolute right-1 top-1 h-2 w-2 rounded-full bg-peach-400 ring-1 ring-white"></span>` : ''}
+          </button>
+        `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    // ==================== BOTTOM SHEET (Date Slots) ====================
+    function openSlotSheet(dateStr) {
+      state.activeSheetDate = dateStr;
+      document.getElementById('sheetDateTitle').textContent = `${dateStr} 時段選擇`;
+      renderSheetSlots();
+      const backdrop = document.getElementById('slotSheetBackdrop');
+      const panel = document.getElementById('slotSheetPanel');
+      backdrop.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        backdrop.classList.remove('opacity-0');
+        panel.classList.remove('translate-y-full');
+      });
+    }
+
+    function closeSlotSheet() {
+      const backdrop = document.getElementById('slotSheetBackdrop');
+      const panel = document.getElementById('slotSheetPanel');
+      backdrop.classList.add('opacity-0');
+      panel.classList.add('translate-y-full');
+      setTimeout(() => backdrop.classList.add('hidden'), 250);
+    }
+
+    function renderSheetSlots() {
+      const dateStr = state.activeSheetDate;
+      if (!dateStr) return;
+      const actorId = currentActorId();
+      const readOnly = isReadOnly();
+      const container = document.getElementById('sheetSlotsContainer');
+
+      container.innerHTML = SLOTS.map(slot => {
+        const selected = state.event.votes.some(
+          v => v.date === dateStr && v.participantId === actorId && (v.slot === slot.id || (slot.id !== 'ALL_DAY' && v.slot === 'ALL_DAY'))
+        );
+        const attendeeIds = getSlotAttendees(dateStr, slot.id);
+        const names = attendeeIds.map(id => {
+          const p = state.event.participants.find(x => x.id === id);
+          if (p) return p.nickname;
+          if (id === actorId) return document.getElementById('myNicknameInput').value || '我 (草稿)';
+          return '參加者';
+        });
+
+        return `
+          <div class="rounded-2xl border bg-white p-3.5 transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
+            <button
+              type="button"
+              ${readOnly ? 'disabled' : `onclick="toggleDateSlot('${dateStr}', '${slot.id}')"`}
+              class="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <div class="flex items-center gap-3">
+                <span class="flex h-7 w-7 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
+                  selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white'
+                }">
+                  ${selected ? '✓' : ''}
+                </span>
+                <div>
+                  <span class="block font-extrabold text-ink">${slot.label[state.lang]}</span>
+                  <span class="block text-xs text-ink-mute">${slot.sub}</span>
+                </div>
+              </div>
+              <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">
+                👥 ${names.length} 人有空
+              </span>
+            </button>
+            ${names.length > 0 ? `
+              <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-stone-100 pt-2">
+                ${names.map(n => `<span class="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-ink-soft">${n}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleDateSlot(dateStr, slotId) {
+      if (isReadOnly()) {
+        showToast('目前為唯讀狀態（已額滿或已鎖定），無法勾選！');
+        return;
+      }
+      const actorId = currentActorId();
+      const exists = state.event.votes.some(v => v.date === dateStr && v.participantId === actorId && v.slot === slotId);
+
+      if (slotId === 'ALL_DAY') {
+        // Remove all slots on that day for actor, then add ALL_DAY if not exists
+        state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId));
+        if (!exists) state.event.votes.push({ participantId: actorId, date: dateStr, slot: 'ALL_DAY' });
+      } else {
+        // Remove ALL_DAY if present
+        state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId && v.slot === 'ALL_DAY'));
+        if (exists) {
+          state.event.votes = state.event.votes.filter(v => !(v.date === dateStr && v.participantId === actorId && v.slot === slotId));
+        } else {
+          state.event.votes.push({ participantId: actorId, date: dateStr, slot: slotId });
+        }
+      }
+
+      if (actorId !== 'p_new_visitor') {
+        const nowTs = Date.now();
+        state.event.actorUpdatedAt = state.event.actorUpdatedAt || {};
+        state.event.actorUpdatedAt[actorId] = nowTs;
+        state.event.updatedAt = nowTs;
+      }
+
+      renderSheetSlots();
+      renderRoom();
+    }
+
+    // ==================== TOP 3 LEADERBOARD ====================
+    function renderTop3Leaderboard() {
+      const distinctVoters = new Set(state.event.votes.map(v => v.participantId)).size;
+      const card = document.getElementById('top3Card');
+      if (distinctVoters < 2) {
+        card.classList.add('hidden');
+        return;
+      }
+      card.classList.remove('hidden');
+
+      const top = computeTop3();
+      const list = document.getElementById('top3List');
+      if (top.length === 0) {
+        list.innerHTML = `<p class="rounded-2xl bg-stone-50 p-4 text-center text-xs text-ink-mute">目前尚無 2 人以上重疊的時段，多勾選幾個日期吧！</p>`;
+        return;
+      }
+
+      const medals = ['🥇 1', '🥈 2', '🥉 3'];
+      list.innerHTML = top.map((item, idx) => {
+        const slotObj = SLOTS.find(s => s.id === item.slot);
+        const names = item.ids.map(id => state.event.participants.find(p => p.id === id)?.nickname || '我 (草稿)');
+        return `
+          <div onclick="openSlotSheet('${item.date}')" class="cursor-pointer rounded-2xl border border-stone-100 bg-stone-50/80 p-3 hover:bg-stone-100/80 transition">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-7 items-center rounded-full bg-peach-100 px-2.5 text-xs font-extrabold text-peach-700">${medals[idx]}</span>
+                <div>
+                  <span class="font-extrabold text-ink text-sm">${item.date}</span>
+                  <span class="ml-1.5 text-xs font-semibold text-ink-soft">${slotObj ? slotObj.label[state.lang] : item.slot}</span>
+                </div>
+              </div>
+              <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">👥 ${item.count} 人有空</span>
+            </div>
+            <div class="mt-2 flex flex-wrap gap-1">
+              ${names.map(n => `<span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-soft shadow-sm">${n}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==================== LOCATION VOTING ====================
+    function renderLocationVoting() {
+      const locs = state.event.locations;
+      const container = document.getElementById('locationVotingContainer');
+      const actorId = currentActorId();
+      const me = state.event.participants.find(p => p.id === actorId);
+      const myChoice = me ? me.locationId : window.__draftLocId || locs[0]?.id;
+
+      if (locs.length === 0) {
+        container.innerHTML = `
+          <div class="flex items-center gap-2.5 rounded-2xl bg-peach-50 p-4">
+            <span class="rounded-full bg-peach-200 px-2.5 py-0.5 text-xs font-extrabold text-peach-700">TBD</span>
+            <span class="text-sm font-bold text-peach-700">地點尚未確定（Location to be decided）</span>
+          </div>
+        `;
+        return;
+      }
+
+      if (locs.length === 1) {
+        const l = locs[0];
+        container.innerHTML = `
+          <div class="flex items-center justify-between gap-3 rounded-2xl bg-peach-50 p-4">
+            <div>
+              <p class="font-extrabold text-ink">${l.name}</p>
+              ${l.notes ? `<p class="text-xs text-ink-mute mt-0.5">${l.notes}</p>` : ''}
+            </div>
+            <a href="${l.mapUrl || 'https://maps.google.com/?q=' + encodeURIComponent(l.name)}" target="_blank" rel="noopener" class="shrink-0 rounded-full bg-peach-200 px-3.5 py-2 text-xs font-extrabold text-peach-700">
+              🗺️ 開啟地圖
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      // 2-3 locations: Radio voting cards
+      const totalVotes = state.event.participants.filter(p => p.locationId).length;
+      container.innerHTML = locs.map(l => {
+        const votes = state.event.participants.filter(p => p.locationId === l.id).length;
+        const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+        const selected = myChoice === l.id;
+        return `
+          <div class="overflow-hidden rounded-2xl border bg-white transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
+            <button
+              type="button"
+              ${isReadOnly() ? 'disabled' : `onclick="voteLocation('${l.id}')"`}
+              class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
+                  selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
+                }">${selected ? '✓' : ''}</span>
+                <div class="min-w-0">
+                  <span class="block truncate font-extrabold text-ink text-sm">${l.name}</span>
+                  ${l.notes ? `<span class="block truncate text-xs text-ink-mute">${l.notes}</span>` : ''}
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-base font-extrabold text-brand-700">${votes} 票</span>
+                <span class="block text-[11px] text-ink-mute">${pct}%</span>
+              </div>
+            </button>
+            <div class="h-1.5 bg-stone-100">
+              <div class="h-full bg-brand-500 transition-all duration-300" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function voteLocation(locId) {
+      if (isReadOnly()) return;
+      const actorId = currentActorId();
+      const me = state.event.participants.find(p => p.id === actorId);
+      if (me) {
+        me.locationId = locId;
+        const nowTs = Date.now();
+        state.event.actorUpdatedAt = state.event.actorUpdatedAt || {};
+        state.event.actorUpdatedAt[actorId] = nowTs;
+        state.event.updatedAt = nowTs;
+      } else {
+        window.__draftLocId = locId;
+      }
+      renderLocationVoting();
+    }
+
+    // ==================== ATOMIC CAPACITY GUARD & SUBMISSION ====================
+    async function submitAvailability() {
+      const ev = state.event;
+      if (ev.isFinalized) {
+        showToast('⚠️ 活動已拍板定案並鎖定，無法修改！');
+        return;
+      }
+
+      const nick = document.getElementById('myNicknameInput').value.trim();
+      if (!nick) {
+        showToast('請先輸入你的暱稱！');
+        document.getElementById('myNicknameInput').focus();
+        return;
+      }
+
+      const nowTs = Date.now();
+      ev.actorUpdatedAt = ev.actorUpdatedAt || {};
+      ev.kickedIds = ev.kickedIds || {};
+      const actorId = currentActorId();
+      const existing = ev.participants.find(p => p.id === actorId);
+
+      // Atomic Concurrency & Capacity Check
+      if (existing) {
+        // Case 2: Token already exists -> update in place without incrementing headcount
+        existing.nickname = nick;
+        if (existing.isHost) ev.hostNickname = nick;
+        ev.actorUpdatedAt[actorId] = nowTs;
+        ev.updatedAt = nowTs;
+        showToast(`✓ 已更新「${nick}」的時段與地點並同步至雲端（維持 ${ev.participants.length}/${ev.maxParticipants}）`);
+      } else {
+        // Case 3 & 4: New participant -> check currentParticipantsCount < maxParticipants
+        if (ev.participants.length >= ev.maxParticipants) {
+          showToast(`❌ HTTP 409 Conflict: 活動已額滿 (${ev.participants.length}/${ev.maxParticipants})，無法新增報名！`);
+          renderRoom();
+          return;
+        }
+        // Assign unique participant ID
+        let assignedId = 'p_guest_' + nowTs.toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+        while (ev.participants.some(p => p.id === assignedId)) {
+          assignedId = 'p_guest_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+        }
+
+        // Case 5: Slots remain -> insert participant and lock slot
+        ev.participants.push({
+          id: assignedId,
+          nickname: nick,
+          isHost: false,
+          locationId: window.__draftLocId || ev.locations[0]?.id || null
+        });
+        // Reassign any draft votes from p_new_visitor to assignedId
+        ev.votes.forEach(v => {
+          if (v.participantId === 'p_new_visitor') v.participantId = assignedId;
+        });
+
+        ev.actorUpdatedAt[assignedId] = nowTs;
+        ev.updatedAt = nowTs;
+        delete ev.kickedIds[assignedId];
+
+        // Persist this tab's actor identity & device participant identity
+        setTabActorForRoom(ev.id, assignedId);
+        if (localStorage.getItem('squadup_host_of_' + ev.id) !== '1') {
+          try { localStorage.setItem('squadup_my_pid_' + ev.id, assignedId); } catch (e) {}
+        }
+
+        state.viewerMode = 'existing';
+        showToast(`🎉 報名成功！「${nick}」已加入揪團（目前 ${ev.participants.length}/${ev.maxParticipants} 人），已同步至雲端！`);
+      }
+      saveRoomToStorage(ev);
+      updateUrlHash(state.event);
+      renderRoom();
+    }
+
+    // ==================== HOST CONTROLS (KICK & FINALIZE) ====================
+    function renderAttendeeRoster() {
+      const ev = state.event;
+      const list = document.getElementById('attendeeList');
+      const hint = document.getElementById('hostPrivilegeHint');
+      const finalizeBar = document.getElementById('hostFinalizeBar');
+
+      hint.classList.toggle('hidden', state.isMember);
+      finalizeBar.classList.toggle('hidden', !state.isMember || ev.isFinalized);
+
+      list.innerHTML = ev.participants.map(p => `
+        <li class="flex items-center justify-between py-2.5">
+          <div class="flex items-center gap-2.5">
+            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
+              ${p.nickname.slice(0, 2)}
+            </span>
+            <div>
+              <span class="font-bold text-ink text-sm">${p.nickname}</span>
+              ${p.isHost ? `<span class="ml-1.5 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+            </div>
+          </div>
+          ${state.isMember && !p.isHost && !ev.isFinalized ? `
+            <button onclick="kickAttendee('${p.id}')" class="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-extrabold text-red-600 hover:bg-red-100">
+              剔除並釋出名額
+            </button>
+          ` : ''}
+        </li>
+      `).join('');
+    }
+
+    function kickAttendee(participantId) {
+      const ev = state.event;
+      const target = ev.participants.find(p => p.id === participantId);
+      if (!target || target.isHost) return;
+      ev.participants = ev.participants.filter(p => p.id !== participantId);
+      ev.votes = ev.votes.filter(v => v.participantId !== participantId);
+      ev.kickedIds = ev.kickedIds || {};
+      ev.kickedIds[participantId] = Date.now();
+      ev.updatedAt = Date.now();
+      saveRoomToStorage(ev);
+      updateUrlHash(ev);
+      showToast(`已剔除「${target.nickname}」，釋出 1 個名額（目前 ${ev.participants.length}/${ev.maxParticipants}），Top 3 已即時重算！`);
+      renderRoom();
+    }
+
+    function finalizeGathering() {
+      const ev = state.event;
+      const top = computeTop3();
+      const chosenDate = top[0]?.date || dateOffsetStr(3);
+      const chosenSlot = top[0]?.slot || 'EVENING';
+      const slotLabel = SLOTS.find(s => s.id === chosenSlot)?.label[state.lang] || chosenSlot;
+
+      let chosenLoc = '地點尚未確定';
+      if (ev.locations.length === 1) {
+        chosenLoc = ev.locations[0].name;
+      } else if (ev.locations.length > 1) {
+        const sorted = [...ev.locations].sort((a, b) => {
+          const va = ev.participants.filter(p => p.locationId === a.id).length;
+          const vb = ev.participants.filter(p => p.locationId === b.id).length;
+          return vb - va;
+        });
+        chosenLoc = sorted[0].name;
+      }
+
+      ev.isFinalized = true;
+      ev.finalDate = chosenDate;
+      ev.finalSlot = chosenSlot;
+      ev.finalLocation = chosenLoc;
+      ev.updatedAt = Date.now();
+
+      document.getElementById('finalTimeText').textContent = `${chosenDate} · ${slotLabel}`;
+      document.getElementById('finalLocText').textContent = chosenLoc;
+
+      const compactDate = chosenDate.replace(/-/g, '');
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T180000/${compactDate}T220000&location=${encodeURIComponent(chosenLoc)}`;
+      document.getElementById('gcalLink').href = gcalUrl;
+
+      saveRoomToStorage(ev);
+      updateUrlHash(ev);
+      showToast('🎉 已拍板定案！所有投票已鎖定，現在可匯出 Google 日曆或下載 .ics 檔案。');
+      renderRoom();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function downloadIcsFile() {
+      const ev = state.event;
+      const d = (ev.finalDate || dateOffsetStr(3)).replace(/-/g, '');
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Squad Up//Gathering//TW',
+        'BEGIN:VEVENT',
+        `UID:${ev.id}@squadup.app`,
+        `DTSTART:${d}T180000`,
+        `DTEND:${d}T220000`,
+        `SUMMARY:${ev.title}`,
+        `LOCATION:${ev.finalLocation || 'TBD'}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ev.title}.ics`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('⬇️ 已下載 .ics 行事曆檔案！');
+    }
+
+    // ==================== INLINE SHARE & PASSCODE MODAL ====================
+    function updateInlineShareInfo() {
+      const ev = state.event;
+      if (!ev) return;
+      const shareUrl = getRoomShareUrl(ev);
+      const urlInput = document.getElementById('shareUrlInput');
+      if (urlInput) urlInput.value = shareUrl;
+      const codeEl = document.getElementById('shareRoomCode');
+      if (codeEl) codeEl.textContent = ev.id;
+
+      const ogTitleEl = document.getElementById('ogPreviewTitle');
+      if (ogTitleEl) ogTitleEl.textContent = `${ev.title} | 揪一下 Squad Up`;
+      const ogDescEl = document.getElementById('ogPreviewDesc');
+      if (ogDescEl) {
+        ogDescEl.textContent = `主辦人：${ev.hostNickname} · 目前參加人數 ${ev.participants.length} / ${ev.maxParticipants} 人 · 點進來選你有空的時間！`;
+      }
+    }
+
+    function openShareModal() {
+      updateInlineShareInfo();
+      const card = document.getElementById('roomShareCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeShareModal() {}
+
+    function copyShareLink() {
+      const input = document.getElementById('shareUrlInput');
+      input.select();
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(input.value).then(() => {
+          showToast('📋 已複製真實揪團連結！快貼到 LINE 或 Discord 群組吧');
+        }).catch(() => {
+          document.execCommand('copy');
+          showToast('📋 已複製真實揪團連結！');
+        });
+      } else {
+        document.execCommand('copy');
+        showToast('📋 已複製真實揪團連結！');
+      }
+    }
+
+    function copyRoomCode() {
+      const code = state.event.id;
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          showToast(`📋 已複製房間代碼「${code}」！`);
+        }).catch(() => {
+          showToast(`代碼：${code}`);
+        });
+      } else {
+        showToast(`代碼：${code}`);
+      }
+    }
+
+    function nativeShare() {
+      const ev = state.event;
+      const shareUrl = getRoomShareUrl(ev);
+      if (navigator.share) {
+        navigator.share({
+          title: `${ev.title} | 揪一下`,
+          text: `【${ev.title}】主辦人：${ev.hostNickname}。快點進來填你方便的時間與地點！房間代碼：${ev.id}`,
+          url: shareUrl
+        }).catch(() => {});
+      } else {
+        copyShareLink();
+      }
+    }
+
+    function verifyRoomPasscode() {
+      const val = document.getElementById('passcodePromptInput').value;
+      if (val === state.event.passcode) {
+        state.event.passcodeUnlocked = true;
+        window.__unlockedRooms = window.__unlockedRooms || {};
+        window.__unlockedRooms[state.event.id] = true;
+        document.getElementById('passcodeModal').classList.add('hidden');
+        document.getElementById('passcodeModal').classList.remove('flex');
+        document.getElementById('passcodeError').classList.add('hidden');
+        showToast('🔓 密碼正確，歡迎進入揪團房間！');
+      } else {
+        document.getElementById('passcodeError').classList.remove('hidden');
+      }
+    }
+
+    // ==================== HOME JOIN & QUICK ACTIONS ====================
+    function openRecentRoom() {
+      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
+      if (recentId && recentId !== 'friday-hotpot-88') {
+        const room = loadRoomFromStorage(recentId);
+        if (room) {
+          loadRoomIntoState(room, false, false, false);
+          updateUrlHash(room);
+          switchView('room');
+          if (window.CloudSync?.fetchRoom) {
+            window.CloudSync.fetchRoom(recentId).then(cloudRoom => {
+              if (cloudRoom) {
+                const merged = mergeRoomStates(state.event || room, cloudRoom);
+                loadRoomIntoState(merged, false, true, false);
+              }
+            });
+          }
+          return;
+        }
+      }
+      if (state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+        switchView('room');
+        return;
+      }
+      switchView('room');
+    }
+
+    async function handleHomeJoin() {
+      const rawInput = (document.getElementById('joinCodeInput').value || '').trim();
+      if (!rawInput) {
+        showToast('請輸入揪團代碼（例如 SQ-8821）或貼上分享連結！');
+        document.getElementById('joinCodeInput').focus();
+        return;
+      }
+
+      let parsedCode = rawInput;
+      let parsedPayload = null;
+
+      if (rawInput.includes('#') || rawInput.includes('?')) {
+        const hashPart = rawInput.split('#')[1] || '';
+        const searchPart = rawInput.split('?')[1]?.split('#')[0] || '';
+        const params = new URLSearchParams(hashPart || searchPart);
+        if (params.get('room')) parsedCode = params.get('room');
+        if (params.get('data')) parsedPayload = params.get('data');
+      }
+
+      let room = null;
+      // 1. Try CloudSync relay first
+      if (parsedCode && window.CloudSync?.fetchRoom && parsedCode !== 'friday-hotpot-88') {
+        room = await window.CloudSync.fetchRoom(parsedCode);
+      }
+      // 2. Try Firebase lookup if connected
+      if (!room && parsedCode && window.FirebaseBridge?.loadRoomFromCloud && parsedCode !== 'friday-hotpot-88') {
+        room = await window.FirebaseBridge.loadRoomFromCloud(parsedCode);
+      }
+      // 3. Merge with LocalStorage or URL payload
+      if (parsedCode && parsedCode !== 'friday-hotpot-88') {
+        const localRoom = loadRoomFromStorage(parsedCode);
+        if (localRoom) room = room ? mergeRoomStates(localRoom, room) : localRoom;
+      }
+      if (parsedPayload) {
+        const urlRoom = decodeRoomPayload(parsedPayload);
+        if (urlRoom) room = room ? mergeRoomStates(urlRoom, room) : urlRoom;
+      }
+
+      if (room) {
+        loadRoomIntoState(room, false, false, true);
+        updateUrlHash(room);
+        switchView('room');
+        showToast(`🎉 成功進入「${room.title}」！`);
+      } else {
+        showToast(`❌ 找不到代碼為「${parsedCode}」的房間。若為訪客建立，請貼上完整分享連結！`);
+      }
+    }
+
+    // ==================== DEEP LINK PARSER & INIT ====================
+    function parseUrlAndLoadRoom() {
+      const hashPart = window.location.hash.slice(1);
+      const searchPart = window.location.search.slice(1);
+      const queryStr = hashPart || searchPart;
+      if (!queryStr) return false;
+
+      const params = new URLSearchParams(queryStr);
+      const roomId = params.get('room');
+      const payload = params.get('data');
+
+      if (!roomId && !payload) return false;
+      if (roomId === 'friday-hotpot-88') return false;
+
+      const roomFromUrl = payload ? decodeRoomPayload(payload) : null;
+      const roomFromLocal = (roomId && roomId !== 'friday-hotpot-88') ? loadRoomFromStorage(roomId) : null;
+      let room = null;
+      if (roomFromLocal && roomFromUrl) {
+        room = mergeRoomStates(roomFromUrl, roomFromLocal);
+      } else {
+        room = roomFromLocal || roomFromUrl;
+      }
+
+      if (room) {
+        loadRoomIntoState(room, false, false, true);
+        switchView('room');
+        showToast(`已透過專屬連結進入「${room.title}」！`);
+      }
+
+      const targetId = roomId || room?.id;
+      if (targetId && targetId !== 'friday-hotpot-88') {
+        if (window.CloudSync?.fetchRoom) {
+          window.CloudSync.fetchRoom(targetId).then(cloudRoom => {
+            if (cloudRoom) {
+              const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
+              const wasEmpty = !room;
+              loadRoomIntoState(merged, false, !wasEmpty, true);
+              if (wasEmpty) switchView('room');
+            }
+          });
+        }
+        if (window.FirebaseBridge?.loadRoomFromCloud) {
+          window.FirebaseBridge.loadRoomFromCloud(targetId).then(cloudRoom => {
+            if (cloudRoom) {
+              const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
+              loadRoomIntoState(merged, false, true, true);
+            }
+          });
+        }
+      }
+
+      return Boolean(room || targetId);
+    }
+
+    window.addEventListener('hashchange', () => {
+      parseUrlAndLoadRoom();
+    });
+
+    // 將各頁籤的固定文案與重新渲染的內容同步套用目前語言。
+    const PAGE_TRANSLATIONS = [
+      ['發起新揪團','Create a gathering','新しい募集を作成'],
+      ['填好基本資訊，主辦人建立後自動占 1 個名額。','Fill in the details. The host takes one spot when the gathering is created.','基本情報を入力してください。作成後、幹事が1名分の枠を使用します。'],
+      ['活動主題','Gathering title','イベント名'],['主辦人暱稱','Host nickname','幹事のニックネーム'],
+      ['候選地點（選填，最多 3 個）','Suggested places (optional, up to 3)','候補の場所（任意・最大3件）'],
+      ['0 個顯示待定、1 個直接顯示地址、2～3 個開啟單選投票','No place: TBD; one: show address; two or three: vote for one','0件は未定、1件は住所を表示、2～3件は投票できます'],
+      ['⚡ 常用生活圈 / 捷運站快捷帶入（會員功能）：','⚡ Saved places / stations (members):','⚡ よく使う場所・駅（会員向け）：'],
+      ['參加人數上限（1～20 人，預設 20）','Capacity (1–20 people, default 20)','定員（1～20名、初期値20名）'],
+      ['包含主辦人本人（建立後即為 1/N）。預設上限為 20 人：','Includes the host (1/N after creation). Default capacity is 20:','幹事を含みます（作成後は1/N）。初期定員は20名です：'],
+      ['請輸入 1 到 20 之間的整數！','Enter a whole number from 1 to 20.','1～20の整数を入力してください。'],
+      ['連結有效天數','Link validity','リンクの有効期間'],['房間密碼（選填，3～8 碼）','Room password (optional, 3–8 characters)','ルームのパスワード（任意・3～8文字）'],
+      ['生成揪團連結並前往房間','Create link and open room','リンクを作成してルームへ'],
+      ['主辦人：','Host: ','幹事：'],['🔗 分享連結','🔗 Share link','🔗 リンクを共有'],
+      ['🔒 已拍板定案','🔒 Finalized','🔒 確定済み'],['成團啦！行程已拍板定案','Gathering confirmed!','開催決定！予定が確定しました'],
+      ['確認時間','Confirmed time','確定日時'],['確認地點','Confirmed place','確定場所'],
+      ['📅 加入 Google 日曆','📅 Add to Google Calendar','📅 Google カレンダーに追加'],['⬇️ 下載 .ics 行事曆檔','⬇️ Download .ics calendar file','⬇️ .ics カレンダーを保存'],
+      ['你仍可查看月曆熱度與最佳時段，但無法新增報名；已加入者仍可修改自己的時段。','You can view availability and top times, but cannot join. Existing participants can still edit their choices.','空き状況と候補日時は閲覧できますが、新規参加はできません。参加済みの方は回答を編集できます。'],
+      ['你的參加資訊','Your participation','あなたの参加情報'],['你的暱稱（儲存於本機 LocalStorage Token）','Your nickname (saved on this device)','ニックネーム（この端末に保存）'],
+      ['月曆時程熱度圖（2 個月）','Availability calendar (2 months)','空き状況カレンダー（2か月）'],
+      ['點選日期彈出底部抽屜，勾選你有空的時段','Select a date to choose your available times','日付を選び、参加できる時間帯を指定してください'],
+      ['本月','This month','今月'],['下個月','Next month','来月'],['少','Fewer','少'],['多（最熱門）','More (most popular)','多（人気）'],['我已勾選','My choice','自分の選択'],
+      ['最佳時段排行榜 Top 3','Top 3 available times','候補日時トップ3'],['點擊可查看名單','Select to see participants','選択して参加者を確認'],
+      ['地點投票 / 資訊區','Place voting / details','場所の投票・詳細'],['參加著名單與主辦人管理','Participants and host controls','参加者一覧と幹事の管理'],
+      ['💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」與「拍板定案（鎖定表單並匯出 .ics）」。','💡 Sign in with Google to manage participants and finalize the gathering.','💡 Googleでログインすると、参加者の管理と予定の確定ができます。'],
+      ['✅ 拍板定案（以第一名時段與最高票地點鎖定揪團）','✅ Finalize with the top time and place','✅ 最上位の日時と場所で確定'],
+      ['我的揪團紀錄','Gathering history','募集履歴'],['註冊成會員之後即可以跨裝置管理活動。','Sign in to manage gatherings across devices.','ログインすると複数の端末で募集を管理できます。'],
+      ['🔄 同步雲端','🔄 Sync cloud','🔄 クラウドと同期'],['目前為訪客模式','Guest mode','ゲストモード'],
+      ['現在揪團資料是保存在瀏覽器，註冊會員會將資料保存在雲端資料庫','Gatherings are saved in this browser. Sign in to save them to the cloud.','募集データはこのブラウザーに保存されています。ログインするとクラウドに保存できます。'],
+      ['👑 我主辦的揪團','👑 Gatherings I host','👑 主催した募集'],['🙋 我參加的揪團','🙋 Gatherings I joined','🙋 参加した募集'],
+      ['尚未發起任何揪團','No gatherings hosted yet','主催した募集はありません'],['尚未參加任何揪團','No gatherings joined yet','参加した募集はありません'],
+      ['日','Sun','日'],['一','Mon','月'],['二','Tue','火'],['三','Wed','水'],['四','Thu','木'],['五','Fri','金'],['六','Sat','土'],
+      ['揪團資料已保存在雲端資料庫，可跨裝置管理','Gatherings are saved in the cloud and available across devices','募集データはクラウドに保存され、複数の端末で管理できます'],
+      ['📦 LocalStorage','📦 Local storage','📦 端末内保存'],
+      ['☁️ 雲端','☁️ Cloud','☁️ クラウド'],['📦 本地','📦 Local','📦 ローカル'],['🟢 協調進行中','🟢 In progress','🟢 調整中'],
+      ['送出時執行原子交易驗證名額上限','Capacity is checked when you submit','送信時に定員を確認します'],
+      ['點選你有空的時段（全天代表所有時段皆可參加）','Choose your available times (all day includes every time slot)','参加できる時間帯を選択（終日は全時間帯を含みます）'],
+      ['關閉','Close','閉じる'],['完成選擇','Done','選択完了'],['分享你的揪團連結','Share your gathering link','募集リンクを共有'],
+      ['複製連結','Copy link','リンクをコピー'],['揪團房間代碼：','Room code: ','ルームコード：'],['複製代碼','Copy code','コードをコピー'],
+      ['💬 轉發至 LINE / 原生分享','💬 Share to LINE / device','💬 LINE・端末で共有'],['關閉視窗','Close window','ウィンドウを閉じる'],
+      ['請輸入房間參加密碼','Enter the room password','ルームのパスワードを入力'],['此揪團受密碼保護，請輸入主辦人設定的密碼：','This gathering is protected. Enter the password set by the host:','この募集にはパスワードが必要です。幹事が設定したパスワードを入力：'],
+      ['密碼錯誤，請再試一次！','Incorrect password. Try again.','パスワードが違います。もう一度お試しください。'],['解鎖進入房間','Unlock room','ルームに入る'],
+      ['🗺️ 開啟地圖','🗺️ Open map','🗺️ 地図を開く'],['地點尚未確定（Location to be decided）','Place to be decided','場所は未定です'],
+      ['目前尚無 2 人以上重疊的時段，多勾選幾個日期吧！','No time is shared by two or more people yet. Select more dates.','2人以上が参加できる時間帯はまだありません。日付を追加してください。'],
+      ['更新我的回覆','Update my response','回答を更新'],['Google 登入','Sign in with Google','Googleでログイン'],['登出帳號','Sign out','ログアウト'],
+      ['目前未設定地點（前台將顯示「地點尚未確定」）。點擊下方按鈕新增候選地點。','No place set yet. Add a suggested place below.','場所は未設定です。下のボタンで候補を追加してください。'],
+      ['移除','Remove','削除'],['✓ 已占名額（同裝置編輯不重複占位）','✓ Spot reserved (edits do not use another spot)','✓ 参加枠を確保済み（編集しても重複しません）'],
+      ['✓ 已占名額（同裝置可編輯）','✓ Spot reserved (editable on this device)','✓ 参加枠を確保済み（この端末で編集可能）'],
+      ['訪客視角（尚未送出報名，不占名額）','Guest view (not joined; no spot reserved)','ゲスト表示（未参加・枠未確保）'],
+      ['送出報名（占 1 名額）','Join (reserve one spot)','参加する（1名分を確保）'],
+      ['🔒 揪團已拍板定案鎖定','🔒 Gathering finalized','🔒 募集は確定済み'],
+      ['目前尚無 2 人以上重疊的時段，多勾選幾個日期吧！','No shared time for two or more people yet. Select more dates.','2人以上が参加できる時間帯はまだありません。日付を追加してください。'],
+      ['☁️ Firebase 雲端即時同步','☁️ Firebase cloud sync','☁️ Firebaseクラウド同期'],
+      ['📦 訪客 LocalStorage','📦 Guest local storage','📦 ゲストの端末内保存'],
+      ['留空代表免密碼；設定後進入房間需驗證','Leave blank for no password; otherwise participants must enter it','空欄ならパスワード不要。設定すると入室時に入力が必要です'],['輸入密碼','Enter password','パスワードを入力'],['生成中...','Generating...','生成中...'],
+      ['尚無最近開啟的揪團房間','No recently opened gatherings','最近開いた募集はありません'],
+      ['發起新揪團或輸入代碼進入後，就會顯示在這裡','Host a gathering or enter a code to see it here','新しい募集を作成するかコードを入力するとここに表示されます'],
+      ['目前沒有開啟中的揪團房間','No active gathering room','開いている募集ルームはありません'],
+      ['你尚未建立或加入任何揪團活動。請先發起新揪團，或在首頁輸入揪團代碼 / 點擊邀請連結進入房間。','You have not created or joined any gathering yet. Create a new gathering, or enter a room code / link on the home page.','まだ募集の作成や参加をしていません。新しい募集を作成するか、トップページでコードを入力してください。'],
+      ['✨ 立即發起新揪團','✨ Create a gathering now','✨ 今すぐ募集を作成'],
+      ['🔍 返回首頁輸入代碼','🔍 Go to home to enter code','🔍 ホームに戻ってコードを入力'],
+      ['尚未選擇時段','No time slots selected','時間帯が未選択です'],
+      ['包含主辦人本人（建立後即為 1/N）。預設上限為 20 人：','Includes the host (1/N after creation). Default capacity is 20:','幹事を含みます（作成後は1/N）。初期定員は20名です：'],
+      ['➕ 以新受邀者身分報名','➕ Join as a new invitee','➕ 新しい参加者として回答する'],
+      ['👑 切換回主辦人','👑 Switch back to host','👑 幹事に戻る'],
+      ['✓ 主辦人身分（編輯自己的時段）','✓ Host (editing your own times)','✓ 幹事（自分の日時を編集）']
+    ];
+    const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
+    const PAGE_ORIGINAL = new WeakMap();
+    const PAGE_PLACEHOLDERS = new WeakMap();
+    function translateDynamicPageText(phrase, lang) {
+      if (lang === 'zh-TW') return phrase;
+      const en = lang === 'en';
+      const rules = [
+        [/^候選地點 (\d+)$/, n => en ? `Suggested place ${n}` : `候補の場所 ${n}`],
+        [/^\+ 新增候選地點 \(\d+\/3\)$/, n => en ? `+ Add suggested place (${n}/3)` : `＋ 候補の場所を追加（${n}/3）`],
+        [/^👥 參加人數：(.*)$/, n => en ? `👥 Participants: ${n}` : `👥 参加人数：${n}`],
+        [/^🈵 已額滿 Full \((.*)\)$/, n => en ? `🈵 Full (${n})` : `🈵 定員満了（${n}）`],
+        [/^⏳ 剩餘 (\d+) 天$/, n => en ? `⏳ ${n} days left` : `⏳ 残り${n}日`],
+        [/^目前已勾選 (\d+) 個時段$/, n => en ? `Selected ${n} time slots` : `${n}件の時間帯を選択中`],
+        [/^已勾選 (\d+) 個有空時段$/, n => en ? `Selected ${n} available times` : `${n}件の時間帯を選択中`],
+        [/^👥 (\d+) 人有空$/, n => en ? `👥 ${n} available` : `👥 ${n}人が参加可能`],
+        [/^(\d+) 票$/, n => en ? `${n} votes` : `${n}票`],
+        [/^(\d+)人$/, n => en ? `${n} people` : `${n}人`],
+        [/^(\d{4}) 年 (\d+) 月$/, (y,m) => en ? `${m}/${y}` : `${y}年${m}月`],
+        [/^(\d{4}-\d\d-\d\d) 時段選擇$/, d => en ? `Choose times · ${d}` : `${d} の時間帯`],
+        [/^· 剩餘 (\d+) 天 · (.*)$/, (n,status) => en ? `· ${n} days left · ${PAGE_TEXT.get(status)?.en || status}` : `· 残り${n}日 · ${PAGE_TEXT.get(status)?.ja || status}`]
+      ];
+      for (const [pattern, format] of rules) {
+        const result = phrase.match(pattern);
+        if (result) return format(...result.slice(1));
+      }
+      return phrase;
+    }
+    function translatePageText() {
+      const lang = state.lang;
+      const roots = ['view-home', 'view-create', 'view-room', 'view-dashboard', 'stickySubmitBar', 'slotSheetPanel', 'shareModal', 'passcodeModal'];
+      for (const id of roots) {
+        const root = document.getElementById(id);
+        if (!root) continue;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          const node = walker.currentNode;
+          const raw = node.nodeValue;
+          const trimmed = raw.trim();
+          if (!trimmed) continue;
+          let original = PAGE_ORIGINAL.get(node);
+          if (!original || (raw !== original.raw && raw !== original.last)) {
+            original = { raw, last: raw };
+            PAGE_ORIGINAL.set(node, original);
+          }
+          const phrase = original.raw.trim();
+          const match = PAGE_TEXT.get(phrase);
+          if (match) {
+            const next = original.raw.replace(phrase, lang === 'zh-TW' ? phrase : match[lang]);
+            if (raw !== next) node.nodeValue = next;
+            original.last = next;
+          } else {
+            const next = original.raw.replace(phrase, translateDynamicPageText(phrase, lang));
+            if (raw !== next) node.nodeValue = next;
+            original.last = next;
+          }
+        }
+        for (const input of root.querySelectorAll('[placeholder]')) {
+          if (!PAGE_PLACEHOLDERS.has(input)) PAGE_PLACEHOLDERS.set(input, input.getAttribute('placeholder'));
+          const original = PAGE_PLACEHOLDERS.get(input);
+          const match = PAGE_TEXT.get(original);
+          if (match) input.setAttribute('placeholder', lang === 'zh-TW' ? original : match[lang]);
+        }
+      }
+    }
+    const originalSetLang = setLang;
+    setLang = function(lang) { originalSetLang(lang); translatePageText(); };
+    const pageObserver = new MutationObserver(() => translatePageText());
+    pageObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+    translatePageText();
+
+    // Initialize on load
+    try {
+      if (localStorage.getItem(RECENT_ROOM_KEY) === 'friday-hotpot-88') {
+        localStorage.removeItem(RECENT_ROOM_KEY);
+      }
+      localStorage.removeItem(STORAGE_PREFIX + 'friday-hotpot-88');
+    } catch (e) {}
+
+    const loadedFromUrl = parseUrlAndLoadRoom();
+    if (!loadedFromUrl) {
+      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
+      if (recentId && recentId !== 'friday-hotpot-88') {
+        const cached = loadRoomFromStorage(recentId);
+        if (cached) {
+          state.event = cached;
+          const identity = determineViewerIdentityForRoom(cached, false);
+          state.viewerMode = identity.mode;
+        }
+      }
+      renderRoom();
+      updateRecentRoomCard();
+    }
+  </script>
+
+  <!-- ==================== FIREBASE SDK INTEGRATION (Auth + Cloud Firestore + Analytics) ==================== -->
+  <script type="module">
+    import { initializeApp } from "firebase/app";
+    import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+    import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection } from "firebase/firestore";
+
+    // Your web app's Firebase configuration (squad-up-42b1a)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAEAYzQNj59SnRFjNFRWcijRRAETTnPzoo",
+      authDomain: "squad-up-42b1a.firebaseapp.com",
+      projectId: "squad-up-42b1a",
+      storageBucket: "squad-up-42b1a.firebasestorage.app",
+      messagingSenderId: "771222656698",
+      appId: "1:771222656698:web:296704807de407f5c65483",
+      measurementId: "G-23QC48Y0KN"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    isAnalyticsSupported().then(yes => {
+      if (yes) getAnalytics(app);
+    }).catch(() => {});
+
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const googleProvider = new GoogleAuthProvider();
+
+    let activeRoomUnsubscribe = null;
+    let activeSubscribedRoomId = null;
+
+    // Listen for real Firebase Authentication state changes
+    onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const mappedUser = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google 會員'),
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || '',
+          isMock: false
+        };
+        window.applyAuthState(mappedUser);
+        window.showToast(`✅ 已透過 Google 登入：${mappedUser.displayName}（已連線 Firebase 雲端資料庫）`);
+        window.FirebaseBridge.fetchCloudRooms();
+      } else if (!window.state?.user?.isMock) {
+        window.applyAuthState(null);
+      }
+    });
+
+    window.FirebaseBridge = {
+      app,
+      auth,
+      db,
+
+      async handleAuthToggle() {
+        // 1. If currently signed in -> Sign Out
+        if (window.state.isMember) {
+          if (auth.currentUser) {
+            await signOut(auth).catch(() => {});
+          }
+          window.applyAuthState(null);
+          window.showToast('👋 已登出 Google 帳號，切換回訪客模式（LocalStorage）');
+          return;
+        }
+
+        // 2. If opened via file:// protocol, browser blocks OAuth popups -> activate Cloud Member mode with Firestore directly
+        if (window.location.protocol === 'file:') {
+          const mockCloudUser = {
+            uid: 'cloud_' + window.getDeviceToken(),
+            displayName: 'Google 會員',
+            email: 'member@squad-up-42b1a.firebaseapp.com',
+            photoURL: '',
+            isMock: true
+          };
+          window.applyAuthState(mockCloudUser);
+          window.showToast('☁️ 已啟用會員模式並連接 Firebase Firestore！（提示：若需彈出真實 Google 視窗請以 localhost 開啟）');
+          this.fetchCloudRooms();
+          return;
+        }
+
+        // 3. Standard HTTP/HTTPS -> Launch real Google OAuth Popup
+        try {
+          await signInWithPopup(auth, googleProvider);
+        } catch (err) {
+          console.warn('Firebase Google Sign-In notice:', err.code, err.message);
+          if (err.code === 'auth/popup-closed-by-user') {
+            window.showToast('已取消 Google 登入視窗');
+            return;
+          }
+          // Fallback to Cloud Member mode if domain not yet authorized or Google provider not toggled in Console
+          const fallbackUser = {
+            uid: 'cloud_' + window.getDeviceToken(),
+            displayName: 'Google 會員',
+            email: 'member@squad-up-42b1a.firebaseapp.com',
+            photoURL: '',
+            isMock: true
+          };
+          window.applyAuthState(fallbackUser);
+          window.showToast(`☁️ 已切換為會員模式並連接 Firestore！（OAuth 提示：${err.code || '請確認 Firebase Console 已啟用 Google 登入'}）`);
+          this.fetchCloudRooms();
+        }
+      },
+
+      async saveRoomToCloud(room) {
+        if (!room || !room.id) return false;
+        try {
+          const payload = JSON.parse(JSON.stringify(room));
+          payload.storageMode = 'cloud';
+          payload.updatedAt = new Date().toISOString();
+          await setDoc(doc(db, 'rooms', room.id), payload, { merge: true });
+          window.state.cloudConnected = true;
+          return true;
+        } catch (err) {
+          console.warn('Firestore saveRoomToCloud notice:', err.message);
+          return false;
+        }
+      },
+
+      async loadRoomFromCloud(roomId) {
+        if (!roomId) return null;
+        try {
+          const snap = await getDoc(doc(db, 'rooms', roomId));
+          if (snap.exists()) {
+            const data = snap.data();
+            data.storageMode = 'cloud';
+            window.state.cloudConnected = true;
+            return data;
+          }
+        } catch (err) {
+          console.warn('Firestore loadRoomFromCloud notice:', err.message);
+        }
+        return null;
+      },
+
+      subscribeToRoom(roomId) {
+        if (!roomId || roomId === 'friday-hotpot-88') return;
+        if (activeSubscribedRoomId === roomId && activeRoomUnsubscribe) return;
+
+        if (activeRoomUnsubscribe) {
+          activeRoomUnsubscribe();
+          activeRoomUnsubscribe = null;
+        }
+        activeSubscribedRoomId = roomId;
+
+        try {
+          activeRoomUnsubscribe = onSnapshot(doc(db, 'rooms', roomId), (snap) => {
+            if (!snap.exists()) return;
+            const cloudRoom = snap.data();
+            cloudRoom.storageMode = 'cloud';
+            window.state.cloudConnected = true;
+
+            // Only update if this room is still the active room
+            if (window.state.event?.id === roomId) {
+              window.loadRoomIntoState(cloudRoom, false, true);
+              window.updateUrlHash(cloudRoom);
+            }
+          }, (err) => {
+            console.warn('Firestore onSnapshot notice:', err.message);
+          });
+        } catch (err) {
+          console.warn('Subscribe failed:', err.message);
+        }
+      },
+
+      async fetchCloudRooms() {
+        try {
+          const snap = await getDocs(collection(db, 'rooms'));
+          const list = [];
+          snap.forEach(d => {
+            const data = d.data();
+            if (data && data.id) {
+              data.storageMode = 'cloud';
+              list.push(data);
+            }
+          });
+          window.state.cloudRoomsCache = list;
+          window.state.cloudConnected = true;
+          if (window.state.currentView === 'dashboard') {
+            window.renderDashboardLists();
+          }
+          return list;
+        } catch (err) {
+          console.warn('Firestore fetchCloudRooms notice:', err.message);
+          return [];
+        }
+      }
+    };
+
+    // Flush any pending room sync if created before Firebase module initialized
+    if (window.__pendingCloudSyncRoom) {
+      window.FirebaseBridge.saveRoomToCloud(window.__pendingCloudSyncRoom);
+      window.FirebaseBridge.subscribeToRoom(window.__pendingCloudSyncRoom.id);
+      window.__pendingCloudSyncRoom = null;
+    }
+
+    // If URL opened with #room=SQ-XXXX, check Firestore in background for latest cloud data
+    const initParams = new URLSearchParams(window.location.hash.slice(1) || window.location.search.slice(1));
+    const urlRoomId = initParams.get('room');
+    if (urlRoomId && urlRoomId !== 'friday-hotpot-88') {
+      window.FirebaseBridge.loadRoomFromCloud(urlRoomId).then(cloudRoom => {
+        if (cloudRoom) {
+          window.loadRoomIntoState(cloudRoom, false);
+          window.switchView('room');
+        } else if (window.state.event && window.state.event.id === urlRoomId) {
+          // Seed cloud document from decoded URL payload so subsequent votes sync in real time
+          window.FirebaseBridge.saveRoomToCloud(window.state.event);
+        }
+      });
+      window.FirebaseBridge.subscribeToRoom(urlRoomId);
+    } else if (window.state.event && window.state.event.id && window.state.event.id !== 'friday-hotpot-88') {
+      window.FirebaseBridge.saveRoomToCloud(window.state.event);
+      window.FirebaseBridge.subscribeToRoom(window.state.event.id);
+    }
+  </script>
+</body>
+</html>
