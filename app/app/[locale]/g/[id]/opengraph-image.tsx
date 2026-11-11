@@ -57,7 +57,13 @@ export default async function Image({ params }: { params: { locale: string; id: 
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 24, background: '#2E7D5B', display: 'flex' }} />
+          <img
+            src="https://duk.tw/4pgHe5.png"
+            alt="Squad Up"
+            width={72}
+            height={72}
+            style={{ width: 72, height: 72, borderRadius: 24, objectFit: 'cover' }}
+          />
           <div style={{ fontSize: 44, fontWeight: 700 }}>{app}</div>
         </div>
 

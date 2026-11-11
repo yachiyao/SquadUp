@@ -22,6 +22,11 @@ export async function generateMetadata({ params }: { params: { locale: string } 
     title: { default: t('title'), template: `%s | ${t('appName')}` },
     description: t('description'),
     applicationName: t('appName'),
+    icons: {
+      icon: 'https://duk.tw/4pgHe5.png',
+      shortcut: 'https://duk.tw/4pgHe5.png',
+      apple: 'https://duk.tw/4pgHe5.png',
+    },
     openGraph: { siteName: t('appName'), title: t('title'), description: t('description'), type: 'website' },
   };
 }
