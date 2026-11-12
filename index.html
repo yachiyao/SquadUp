@@ -208,7 +208,7 @@
             揪一下，輕鬆喬好聚會時間與地點。
           </h1>
           <p id="homeHeroSub" class="mt-1.5 text-sm text-ink-soft">
-            建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。
+            通訊溝通上揪團困難？難以整合大家有空的時間？難以決定日期地點？本服務解決你的困擾，並且可以免費使用！
           </p>
 
           <button onclick="switchView('create')" id="homeCreateBtn" class="mt-6 flex min-h-16 px-5 py-4 w-full items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white shadow-sm hover:bg-brand-700 active:scale-[.98] transition">
@@ -411,7 +411,8 @@
                 <span>🔗</span> <span>分享你的揪團連結</span>
               </h2>
               <button type="button" onclick="nativeShare()" class="inline-flex h-8 items-center gap-1 rounded-xl bg-[#06C755] px-3 text-xs font-extrabold text-white hover:opacity-95 active:scale-95 transition">
-                💬 轉發至 LINE / 原生分享
+                <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
+                <span>分享連結</span>
               </button>
             </div>
 
@@ -602,7 +603,6 @@
     <div class="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3">
       <div class="min-w-0">
         <p id="stickySelectionSummary" class="text-sm font-extrabold text-ink">尚未選擇時段</p>
-        <p id="stickyRoleHint" class="text-xs text-ink-mute">送出時執行原子交易驗證名額上限</p>
       </div>
       <button onclick="submitAvailability()" id="submitVoteBtn" class="h-12 shrink-0 rounded-2xl bg-brand-600 px-6 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition">
         送出報名（占 1 名額）
@@ -1400,7 +1400,7 @@
         subtitle: '線上即時聚會協調',
         badge: '✨ 免註冊即可快速發起',
         heroTitle: '揪一下，輕鬆喬好聚會時間與地點。',
-        heroSub: '建立揪團、分享 LINE / Discord 連結，看大家有空的日子在熱度圖上一格格亮起來。',
+        heroSub: '通訊溝通上揪團困難？難以整合大家有空的時間？難以決定日期地點？本服務解決你的困擾，並且可以免費使用！',
         createCta: '我是主辦人 · 發起新揪團',
         joinLabel: '輸入揪團代碼或連結進入',
         joinBtn: '參加揪團',
@@ -1411,7 +1411,7 @@
         subtitle: 'Real-time online gathering coordination',
         badge: '✨ No sign-up required',
         heroTitle: 'Squad up in a snap — pick the day, pick the place.',
-        heroSub: 'Create a gathering, share one link on LINE or Discord, and watch free days light up.',
+        heroSub: 'Struggling to organize a gathering over chat? Having trouble finding a time that works for everyone or deciding on a date and place? We make it easy—and free!',
         createCta: "I'm the host · Start a gathering",
         joinLabel: 'Enter a gathering code or link',
         joinBtn: 'Join gathering',
@@ -1422,7 +1422,7 @@
         subtitle: 'オンラインでリアルタイムに集まりを調整',
         badge: '✨ 登録不要ですぐ使える',
         heroTitle: 'さくっと集まろう。日程も場所もすぐ決まる。',
-        heroSub: '募集を作ってLINEやDiscordで共有。みんなの空き日がカレンダーに色づきます。',
+        heroSub: 'チャットでの集まりの調整に困っていませんか？みんなの空き時間が合わない？日時や場所が決まらない？そんなお悩みを解決するサービスを、無料でご利用いただけます！',
         createCta: '幹事になる · 新しい募集を作成',
         joinLabel: '募集コードまたはリンクを入力',
         joinBtn: '募集に参加',
@@ -3252,11 +3252,10 @@
       ['揪團資料已保存在雲端資料庫，可跨裝置管理','Gatherings are saved in the cloud and available across devices','募集データはクラウドに保存され、複数の端末で管理できます'],
       ['📦 LocalStorage','📦 Local storage','📦 端末内保存'],
       ['☁️ 雲端','☁️ Cloud','☁️ クラウド'],['📦 本地','📦 Local','📦 ローカル'],['🟢 協調進行中','🟢 In progress','🟢 調整中'],
-      ['送出時執行原子交易驗證名額上限','Capacity is checked when you submit','送信時に定員を確認します'],
       ['點選你有空的時段（全天代表所有時段皆可參加）','Choose your available times (all day includes every time slot)','参加できる時間帯を選択（終日は全時間帯を含みます）'],
       ['關閉','Close','閉じる'],['完成選擇','Done','選択完了'],['分享你的揪團連結','Share your gathering link','募集リンクを共有'],
       ['複製連結','Copy link','リンクをコピー'],['揪團房間代碼：','Room code: ','ルームコード：'],['複製代碼','Copy code','コードをコピー'],
-      ['💬 轉發至 LINE / 原生分享','💬 Share to LINE / device','💬 LINE・端末で共有'],['關閉視窗','Close window','ウィンドウを閉じる'],
+      ['分享連結','Share link','リンクを共有'],['關閉視窗','Close window','ウィンドウを閉じる'],
       ['請輸入房間參加密碼','Enter the room password','ルームのパスワードを入力'],['此揪團受密碼保護，請輸入主辦人設定的密碼：','This gathering is protected. Enter the password set by the host:','この募集にはパスワードが必要です。幹事が設定したパスワードを入力：'],
       ['密碼錯誤，請再試一次！','Incorrect password. Try again.','パスワードが違います。もう一度お試しください。'],['解鎖進入房間','Unlock room','ルームに入る'],
       ['🗺️ 開啟地圖','🗺️ Open map','🗺️ 地図を開く'],['地點尚未確定（Location to be decided）','Place to be decided','場所は未定です'],
