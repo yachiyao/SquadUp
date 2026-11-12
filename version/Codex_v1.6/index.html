@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>揪一下 Squad Up | 線上即時揪團 MVP 雛形</title>
+  <title>揪一下 | 線上即時聚會協調</title>
   <link rel="icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="shortcut icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="apple-touch-icon" href="https://duk.tw/4pgHe5.png" />
@@ -967,14 +967,12 @@
 
     function getRoomShareUrl(room) {
       const base = getBaseUrl();
-      const payload = encodeRoomPayload(room);
-      return `${base}#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`;
+      return `${base}#room=${encodeURIComponent(room.id)}`;
     }
 
     function updateUrlHash(room) {
       try {
-        const payload = encodeRoomPayload(room);
-        window.history.replaceState(null, '', `#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`);
+        window.history.replaceState(null, '', `#room=${encodeURIComponent(room.id)}`);
       } catch (e) {
         console.warn('Could not update history state', e);
       }
@@ -1396,6 +1394,7 @@
     // ==================== I18N ====================
     const I18N = {
       'zh-TW': {
+        pageTitle: '揪一下 | 線上即時聚會協調',
         brand: '揪一下',
         subtitle: '線上即時聚會協調',
         badge: '✨ 免註冊即可快速發起',
@@ -1407,6 +1406,7 @@
         tabs: ['1. 首頁', '2. 發起揪團', '3. 揪團房間', '4. 歷史紀錄']
       },
       en: {
+        pageTitle: 'Squad Up | Real-time online gathering coordination',
         brand: 'Squad Up',
         subtitle: 'Real-time online gathering coordination',
         badge: '✨ No sign-up required',
@@ -1418,6 +1418,7 @@
         tabs: ['1. Home', '2. Create', '3. Room', '4. History']
       },
       ja: {
+        pageTitle: 'スコッドアップ | オンラインでリアルタイムに集まりを調整',
         brand: 'スコッドアップ',
         subtitle: 'オンラインでリアルタイムに集まりを調整',
         badge: '✨ 登録不要ですぐ使える',
@@ -1465,6 +1466,7 @@
         }
       });
       const dict = I18N[lang];
+      document.title = dict.pageTitle;
       document.getElementById('brandTitle').textContent = dict.brand;
       document.getElementById('brandSubtitle').textContent = dict.subtitle;
       document.getElementById('homeBadge').textContent = dict.badge;
@@ -3190,13 +3192,20 @@
 
       const targetId = roomId || room?.id;
       if (targetId && targetId !== 'friday-hotpot-88') {
+        if (!room) {
+          switchView('room');
+          showToast(`🔄 正在連線讀取房間 ${targetId}...`);
+        }
         if (window.CloudSync?.fetchRoom) {
           window.CloudSync.fetchRoom(targetId).then(cloudRoom => {
             if (cloudRoom) {
               const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
-              const wasEmpty = !room;
+              const wasEmpty = !state.event || state.event.id !== targetId;
               loadRoomIntoState(merged, false, !wasEmpty, true);
-              if (wasEmpty) switchView('room');
+              if (wasEmpty) {
+                switchView('room');
+                showToast(`已透過專屬連結進入「${merged.title}」！`);
+              }
             }
           });
         }
@@ -3204,7 +3213,12 @@
           window.FirebaseBridge.loadRoomFromCloud(targetId).then(cloudRoom => {
             if (cloudRoom) {
               const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
-              loadRoomIntoState(merged, false, true, true);
+              const wasEmpty = !state.event || state.event.id !== targetId;
+              loadRoomIntoState(merged, false, !wasEmpty, true);
+              if (wasEmpty) {
+                switchView('room');
+                showToast(`已透過專屬連結進入「${merged.title}」！`);
+              }
             }
           });
         }
@@ -3591,8 +3605,13 @@
     if (urlRoomId && urlRoomId !== 'friday-hotpot-88') {
       window.FirebaseBridge.loadRoomFromCloud(urlRoomId).then(cloudRoom => {
         if (cloudRoom) {
-          window.loadRoomIntoState(cloudRoom, false);
+          const wasEmpty = !window.state.event || window.state.event.id !== urlRoomId;
+          const merged = (!wasEmpty && window.state.event) ? window.mergeRoomStates(window.state.event, cloudRoom) : cloudRoom;
+          window.loadRoomIntoState(merged, false, !wasEmpty, true);
           window.switchView('room');
+          if (wasEmpty && typeof window.showToast === 'function') {
+            window.showToast(`已透過專屬連結進入「${merged.title}」！`);
+          }
         } else if (window.state.event && window.state.event.id === urlRoomId) {
           // Seed cloud document from decoded URL payload so subsequent votes sync in real time
           window.FirebaseBridge.saveRoomToCloud(window.state.event);
