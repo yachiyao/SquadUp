@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>揪一下 | 線上即時聚會協調</title>
+  <title>揪一下 Squad Up | 線上即時揪團 MVP 雛形</title>
   <link rel="icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="shortcut icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="apple-touch-icon" href="https://duk.tw/4pgHe5.png" />
@@ -925,21 +925,19 @@
         });
       });
 
-      // Preserve current tab's unsaved draft votes ('p_new_visitor') in memory only while this tab is an unjoined visitor
-      if (typeof currentActorId === 'function' && currentActorId() === 'p_new_visitor') {
-        const draftVotes = [
-          ...((roomA.votes || []).filter(v => v.participantId === 'p_new_visitor')),
-          ...((roomB.votes || []).filter(v => v.participantId === 'p_new_visitor'))
-        ];
-        const seenDraft = new Set();
-        draftVotes.forEach(v => {
-          const key = `${v.date}_${v.slot}`;
-          if (!seenDraft.has(key)) {
-            seenDraft.add(key);
-            mergedVotes.push({ participantId: 'p_new_visitor', date: v.date, slot: v.slot });
-          }
-        });
-      }
+      // Preserve current tab's unsaved draft votes ('p_new_visitor') if any
+      const draftVotes = [
+        ...((roomA.votes || []).filter(v => v.participantId === 'p_new_visitor')),
+        ...((roomB.votes || []).filter(v => v.participantId === 'p_new_visitor'))
+      ];
+      const seenDraft = new Set();
+      draftVotes.forEach(v => {
+        const key = `${v.date}_${v.slot}`;
+        if (!seenDraft.has(key)) {
+          seenDraft.add(key);
+          mergedVotes.push({ participantId: 'p_new_visitor', date: v.date, slot: v.slot });
+        }
+      });
 
       const isFinalized = Boolean(primary.isFinalized || roomA.isFinalized || roomB.isFinalized);
       const finalSource = primary.isFinalized ? primary : (roomB.isFinalized ? roomB : roomA);
@@ -969,12 +967,14 @@
 
     function getRoomShareUrl(room) {
       const base = getBaseUrl();
-      return `${base}#room=${encodeURIComponent(room.id)}`;
+      const payload = encodeRoomPayload(room);
+      return `${base}#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`;
     }
 
     function updateUrlHash(room) {
       try {
-        window.history.replaceState(null, '', `#room=${encodeURIComponent(room.id)}`);
+        const payload = encodeRoomPayload(room);
+        window.history.replaceState(null, '', `#room=${encodeURIComponent(room.id)}&data=${encodeURIComponent(payload)}`);
       } catch (e) {
         console.warn('Could not update history state', e);
       }
@@ -1036,8 +1036,6 @@
               if (ev.event === 'message' && ev.message) {
                 const snap = JSON.parse(ev.message);
                 if (snap && snap.id === roomId) {
-                  snap.participants = (snap.participants || []).filter(p => p.id !== 'p_new_visitor');
-                  snap.votes = (snap.votes || []).filter(v => v.participantId !== 'p_new_visitor');
                   merged = merged ? mergeRoomStates(merged, snap) : snap;
                 }
               }
@@ -1056,8 +1054,6 @@
 
       applyIncomingRoomSnapshot(incomingRoom, showUpdateNotice = false) {
         if (!incomingRoom || !incomingRoom.id) return;
-        incomingRoom.participants = (incomingRoom.participants || []).filter(p => p.id !== 'p_new_visitor');
-        incomingRoom.votes = (incomingRoom.votes || []).filter(v => v.participantId !== 'p_new_visitor');
         const prevLocal = loadRoomFromStorage(incomingRoom.id);
         const base = (state.event && state.event.id === incomingRoom.id) ? state.event : prevLocal;
         const prevCount = base?.participants?.length || 0;
@@ -1068,12 +1064,7 @@
         merged.storageMode = 'cloud';
 
         try {
-          const cleanForStorage = {
-            ...merged,
-            participants: (merged.participants || []).filter(p => p.id !== 'p_new_visitor'),
-            votes: (merged.votes || []).filter(v => v.participantId !== 'p_new_visitor')
-          };
-          localStorage.setItem(STORAGE_PREFIX + merged.id, JSON.stringify(cleanForStorage));
+          localStorage.setItem(STORAGE_PREFIX + merged.id, JSON.stringify(merged));
           localStorage.setItem(RECENT_ROOM_KEY, merged.id);
         } catch (e) {}
 
@@ -1193,14 +1184,9 @@
         const existingLocal = loadRoomFromStorage(room.id);
         const toSave = existingLocal ? mergeRoomStates(existingLocal, room) : room;
         state.event = (state.event && state.event.id === room.id) ? toSave : state.event;
-        const cleanForStorage = {
-          ...toSave,
-          participants: (toSave.participants || []).filter(p => p.id !== 'p_new_visitor'),
-          votes: (toSave.votes || []).filter(v => v.participantId !== 'p_new_visitor')
-        };
-        localStorage.setItem(STORAGE_PREFIX + room.id, JSON.stringify(cleanForStorage));
+        localStorage.setItem(STORAGE_PREFIX + room.id, JSON.stringify(toSave));
         localStorage.setItem(RECENT_ROOM_KEY, room.id);
-        room = cleanForStorage;
+        room = toSave;
       } catch (e) {
         console.warn('LocalStorage save failed', e);
       }
@@ -1218,14 +1204,7 @@
     function loadRoomFromStorage(roomId) {
       try {
         const data = localStorage.getItem(STORAGE_PREFIX + roomId);
-        if (data) {
-          const parsed = JSON.parse(data);
-          if (parsed && typeof parsed === 'object') {
-            parsed.participants = (parsed.participants || []).filter(p => p.id !== 'p_new_visitor');
-            parsed.votes = (parsed.votes || []).filter(v => v.participantId !== 'p_new_visitor');
-          }
-          return parsed;
-        }
+        if (data) return JSON.parse(data);
       } catch (e) {
         console.warn('LocalStorage load failed', e);
       }
@@ -1417,7 +1396,6 @@
     // ==================== I18N ====================
     const I18N = {
       'zh-TW': {
-        pageTitle: '揪一下 | 線上即時聚會協調',
         brand: '揪一下',
         subtitle: '線上即時聚會協調',
         badge: '✨ 免註冊即可快速發起',
@@ -1429,7 +1407,6 @@
         tabs: ['1. 首頁', '2. 發起揪團', '3. 揪團房間', '4. 歷史紀錄']
       },
       en: {
-        pageTitle: 'Squad Up | Real-time online gathering coordination',
         brand: 'Squad Up',
         subtitle: 'Real-time online gathering coordination',
         badge: '✨ No sign-up required',
@@ -1441,7 +1418,6 @@
         tabs: ['1. Home', '2. Create', '3. Room', '4. History']
       },
       ja: {
-        pageTitle: 'スコッドアップ | オンラインでリアルタイムに集まりを調整',
         brand: 'スコッドアップ',
         subtitle: 'オンラインでリアルタイムに集まりを調整',
         badge: '✨ 登録不要ですぐ使える',
@@ -1489,7 +1465,6 @@
         }
       });
       const dict = I18N[lang];
-      document.title = dict.pageTitle;
       document.getElementById('brandTitle').textContent = dict.brand;
       document.getElementById('brandSubtitle').textContent = dict.subtitle;
       document.getElementById('homeBadge').textContent = dict.badge;
@@ -2342,18 +2317,11 @@
     }
 
     // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING)
-    // Only count votes from actual joined participants (excluding unsaved 'p_new_visitor' drafts)
     function getSlotAttendees(date, slot) {
       const set = new Set();
-      if (!state.event || !state.event.votes || !state.event.participants) return [];
-      const validPids = new Set(
-        state.event.participants
-          .filter(p => p && p.id && p.id !== 'p_new_visitor')
-          .map(p => p.id)
-      );
+      if (!state.event || !state.event.votes) return [];
       state.event.votes.forEach(v => {
         if (v.date !== date) return;
-        if (!validPids.has(v.participantId)) return;
         if (v.slot === slot || (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY')) {
           set.add(v.participantId);
         }
@@ -2650,9 +2618,12 @@
           v => v.date === dateStr && v.participantId === actorId && (v.slot === slot.id || (slot.id !== 'ALL_DAY' && v.slot === 'ALL_DAY'))
         );
         const attendeeIds = getSlotAttendees(dateStr, slot.id);
-        const names = attendeeIds
-          .map(id => state.event.participants.find(x => x.id === id)?.nickname)
-          .filter(Boolean);
+        const names = attendeeIds.map(id => {
+          const p = state.event.participants.find(x => x.id === id);
+          if (p) return p.nickname;
+          if (id === actorId) return document.getElementById('myNicknameInput').value || '我 (草稿)';
+          return '參加者';
+        });
 
         return `
           <div class="rounded-2xl border bg-white p-3.5 transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
@@ -2721,16 +2692,7 @@
 
     // ==================== TOP 3 LEADERBOARD ====================
     function renderTop3Leaderboard() {
-      const validPids = new Set(
-        (state.event.participants || [])
-          .filter(p => p && p.id && p.id !== 'p_new_visitor')
-          .map(p => p.id)
-      );
-      const distinctVoters = new Set(
-        (state.event.votes || [])
-          .filter(v => validPids.has(v.participantId))
-          .map(v => v.participantId)
-      ).size;
+      const distinctVoters = new Set(state.event.votes.map(v => v.participantId)).size;
       const card = document.getElementById('top3Card');
       if (distinctVoters < 2) {
         card.classList.add('hidden');
@@ -2748,9 +2710,7 @@
       const medals = ['🥇 1', '🥈 2', '🥉 3'];
       list.innerHTML = top.map((item, idx) => {
         const slotObj = SLOTS.find(s => s.id === item.slot);
-        const names = item.ids
-          .map(id => state.event.participants.find(p => p.id === id)?.nickname)
-          .filter(Boolean);
+        const names = item.ids.map(id => state.event.participants.find(p => p.id === id)?.nickname || '我 (草稿)');
         return `
           <div onclick="openSlotSheet('${item.date}')" class="cursor-pointer rounded-2xl border border-stone-100 bg-stone-50/80 p-3 hover:bg-stone-100/80 transition">
             <div class="flex items-center justify-between gap-2">
@@ -3230,20 +3190,13 @@
 
       const targetId = roomId || room?.id;
       if (targetId && targetId !== 'friday-hotpot-88') {
-        if (!room) {
-          switchView('room');
-          showToast(`🔄 正在連線讀取房間 ${targetId}...`);
-        }
         if (window.CloudSync?.fetchRoom) {
           window.CloudSync.fetchRoom(targetId).then(cloudRoom => {
             if (cloudRoom) {
               const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
-              const wasEmpty = !state.event || state.event.id !== targetId;
+              const wasEmpty = !room;
               loadRoomIntoState(merged, false, !wasEmpty, true);
-              if (wasEmpty) {
-                switchView('room');
-                showToast(`已透過專屬連結進入「${merged.title}」！`);
-              }
+              if (wasEmpty) switchView('room');
             }
           });
         }
@@ -3251,12 +3204,7 @@
           window.FirebaseBridge.loadRoomFromCloud(targetId).then(cloudRoom => {
             if (cloudRoom) {
               const merged = state.event?.id === targetId ? mergeRoomStates(state.event, cloudRoom) : cloudRoom;
-              const wasEmpty = !state.event || state.event.id !== targetId;
-              loadRoomIntoState(merged, false, !wasEmpty, true);
-              if (wasEmpty) {
-                switchView('room');
-                showToast(`已透過專屬連結進入「${merged.title}」！`);
-              }
+              loadRoomIntoState(merged, false, true, true);
             }
           });
         }
@@ -3551,8 +3499,6 @@
           const payload = JSON.parse(JSON.stringify(room));
           payload.storageMode = 'cloud';
           payload.updatedAt = new Date().toISOString();
-          payload.participants = (payload.participants || []).filter(p => p.id !== 'p_new_visitor');
-          payload.votes = (payload.votes || []).filter(v => v.participantId !== 'p_new_visitor');
           await setDoc(doc(db, 'rooms', room.id), payload, { merge: true });
           window.state.cloudConnected = true;
           return true;
@@ -3569,8 +3515,6 @@
           if (snap.exists()) {
             const data = snap.data();
             data.storageMode = 'cloud';
-            data.participants = (data.participants || []).filter(p => p.id !== 'p_new_visitor');
-            data.votes = (data.votes || []).filter(v => v.participantId !== 'p_new_visitor');
             window.state.cloudConnected = true;
             return data;
           }
@@ -3595,8 +3539,6 @@
             if (!snap.exists()) return;
             const cloudRoom = snap.data();
             cloudRoom.storageMode = 'cloud';
-            cloudRoom.participants = (cloudRoom.participants || []).filter(p => p.id !== 'p_new_visitor');
-            cloudRoom.votes = (cloudRoom.votes || []).filter(v => v.participantId !== 'p_new_visitor');
             window.state.cloudConnected = true;
 
             // Only update if this room is still the active room
@@ -3649,13 +3591,8 @@
     if (urlRoomId && urlRoomId !== 'friday-hotpot-88') {
       window.FirebaseBridge.loadRoomFromCloud(urlRoomId).then(cloudRoom => {
         if (cloudRoom) {
-          const wasEmpty = !window.state.event || window.state.event.id !== urlRoomId;
-          const merged = (!wasEmpty && window.state.event) ? window.mergeRoomStates(window.state.event, cloudRoom) : cloudRoom;
-          window.loadRoomIntoState(merged, false, !wasEmpty, true);
+          window.loadRoomIntoState(cloudRoom, false);
           window.switchView('room');
-          if (wasEmpty && typeof window.showToast === 'function') {
-            window.showToast(`已透過專屬連結進入「${merged.title}」！`);
-          }
         } else if (window.state.event && window.state.event.id === urlRoomId) {
           // Seed cloud document from decoded URL payload so subsequent votes sync in real time
           window.FirebaseBridge.saveRoomToCloud(window.state.event);

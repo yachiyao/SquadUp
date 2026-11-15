@@ -1,17 +1,22 @@
-# 揪一下（Squad Up / スコッドアップ）v1.6
+# 揪一下（Squad Up / スコッドアップ）v1.7
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-12。最新單檔 HTML 原型為 v1.6，根目錄 `index.html` 與 `version/Codex_v1.6/index.html` 內容相同。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-15。最新單檔 HTML 原型為 v1.7，根目錄 `index.html` 與 `version/Gemini_v1.7/index.html` 內容相同。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+
+## v1.7 更新重點
+
+- **原生精簡短網址**：邀請連結改為 `#room=SQ-XXXX` 短格式（`https://yachiyao.github.io/SquadUp/#room=SQ-XXXX`，僅 47 字元），移除冗長的 `&data=` Base64 參數，直接透過雲端讀取房間資料，並保留舊版長連結向下相容。
+- **時段人數與排行榜計算修正**：排除尚未送出報名的 `我 (草稿)`（`p_new_visitor`）暫存紀錄，確保月曆熱度圖、時段選擇抽屜與最佳時段排行榜 Top 3 僅計算正式參加者人數與名單，並在讀寫本機與雲端資料時自動清除草稿殘留。
+- **瀏覽器分頁標題多語化**：預設標題改為「揪一下 | 線上即時聚會協調」，切換英文／日文時動態同步更新 `document.title`。
+- **版本備份**：將目前單檔完整備份至 `version/Gemini_v1.7/index.html`。
 
 ## v1.6 更新重點
 
 - 更新首頁介紹文案，強調揪團時間與地點協調，以及免費使用；同步繁中、英文與日文，Next.js 多語系文案亦已更新。
 - 房間分享按鈕改為「分享連結」，採用三點連線 SVG 分享圖示，並更新英日文標籤。
 - 移除底部「送出時執行原子交易驗證名額上限」說明及其翻譯。
-- 瀏覽器分頁標題改為「揪一下 | 線上即時聚會協調」，切換英文／日文時動態同步更新 `document.title`。
-- 邀請連結精簡為原生短網址格式（`https://yachiyao.github.io/SquadUp/#room=SQ-XXXX`），移除網址內冗長的 `&data=` Base64 參數，直接由雲端讀取房間資料，並保留舊版長連結向下相容。
-- 將目前單檔完整備份至 `version/Codex_v1.6/index.html`。此備份不包含獨立的 `app/` 應用。
+- 將單檔備份至 `version/Codex_v1.6/index.html`。此備份不包含獨立的 `app/` 應用。
 - 已檢查文字差異與翻譯 JSON 格式；尚未進行瀏覽器視覺驗證。
 
 ## v1.5 更新重點
@@ -26,7 +31,7 @@
 
 ```text
 Squad Up/
-├── index.html                 # 單檔 HTML 原型 v1.6
+├── index.html                 # 單檔 HTML 原型 v1.7
 ├── firebase.json              # Firestore 規則檔設定
 ├── firestore.rules            # 本機 Firestore 安全規則
 ├── version/
@@ -35,8 +40,9 @@ Squad Up/
 │   ├── Gemini_v1.2/
 │   ├── GPT-6_v1.3/
 │   ├── Gemini_v1.4/
-│   ├── Codex_v1.6/
 │   ├── Gemini_v1.5/
+│   ├── Codex_v1.6/
+│   ├── Gemini_v1.7/
 │   └── README.md              # HTML 迭代紀錄
 ├── app/                       # Next.js 14、Prisma、PostgreSQL 全端應用
 ├── docs/                      # 產品規格、企劃與競品研究
