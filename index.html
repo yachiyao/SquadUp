@@ -925,19 +925,21 @@
         });
       });
 
-      // Preserve current tab's unsaved draft votes ('p_new_visitor') if any
-      const draftVotes = [
-        ...((roomA.votes || []).filter(v => v.participantId === 'p_new_visitor')),
-        ...((roomB.votes || []).filter(v => v.participantId === 'p_new_visitor'))
-      ];
-      const seenDraft = new Set();
-      draftVotes.forEach(v => {
-        const key = `${v.date}_${v.slot}`;
-        if (!seenDraft.has(key)) {
-          seenDraft.add(key);
-          mergedVotes.push({ participantId: 'p_new_visitor', date: v.date, slot: v.slot });
-        }
-      });
+      // Preserve current tab's unsaved draft votes ('p_new_visitor') in memory only while this tab is an unjoined visitor
+      if (typeof currentActorId === 'function' && currentActorId() === 'p_new_visitor') {
+        const draftVotes = [
+          ...((roomA.votes || []).filter(v => v.participantId === 'p_new_visitor')),
+          ...((roomB.votes || []).filter(v => v.participantId === 'p_new_visitor'))
+        ];
+        const seenDraft = new Set();
+        draftVotes.forEach(v => {
+          const key = `${v.date}_${v.slot}`;
+          if (!seenDraft.has(key)) {
+            seenDraft.add(key);
+            mergedVotes.push({ participantId: 'p_new_visitor', date: v.date, slot: v.slot });
+          }
+        });
+      }
 
       const isFinalized = Boolean(primary.isFinalized || roomA.isFinalized || roomB.isFinalized);
       const finalSource = primary.isFinalized ? primary : (roomB.isFinalized ? roomB : roomA);
@@ -1034,6 +1036,8 @@
               if (ev.event === 'message' && ev.message) {
                 const snap = JSON.parse(ev.message);
                 if (snap && snap.id === roomId) {
+                  snap.participants = (snap.participants || []).filter(p => p.id !== 'p_new_visitor');
+                  snap.votes = (snap.votes || []).filter(v => v.participantId !== 'p_new_visitor');
                   merged = merged ? mergeRoomStates(merged, snap) : snap;
                 }
               }
@@ -1052,6 +1056,8 @@
 
       applyIncomingRoomSnapshot(incomingRoom, showUpdateNotice = false) {
         if (!incomingRoom || !incomingRoom.id) return;
+        incomingRoom.participants = (incomingRoom.participants || []).filter(p => p.id !== 'p_new_visitor');
+        incomingRoom.votes = (incomingRoom.votes || []).filter(v => v.participantId !== 'p_new_visitor');
         const prevLocal = loadRoomFromStorage(incomingRoom.id);
         const base = (state.event && state.event.id === incomingRoom.id) ? state.event : prevLocal;
         const prevCount = base?.participants?.length || 0;
@@ -1062,7 +1068,12 @@
         merged.storageMode = 'cloud';
 
         try {
-          localStorage.setItem(STORAGE_PREFIX + merged.id, JSON.stringify(merged));
+          const cleanForStorage = {
+            ...merged,
+            participants: (merged.participants || []).filter(p => p.id !== 'p_new_visitor'),
+            votes: (merged.votes || []).filter(v => v.participantId !== 'p_new_visitor')
+          };
+          localStorage.setItem(STORAGE_PREFIX + merged.id, JSON.stringify(cleanForStorage));
           localStorage.setItem(RECENT_ROOM_KEY, merged.id);
         } catch (e) {}
 
@@ -1182,9 +1193,14 @@
         const existingLocal = loadRoomFromStorage(room.id);
         const toSave = existingLocal ? mergeRoomStates(existingLocal, room) : room;
         state.event = (state.event && state.event.id === room.id) ? toSave : state.event;
-        localStorage.setItem(STORAGE_PREFIX + room.id, JSON.stringify(toSave));
+        const cleanForStorage = {
+          ...toSave,
+          participants: (toSave.participants || []).filter(p => p.id !== 'p_new_visitor'),
+          votes: (toSave.votes || []).filter(v => v.participantId !== 'p_new_visitor')
+        };
+        localStorage.setItem(STORAGE_PREFIX + room.id, JSON.stringify(cleanForStorage));
         localStorage.setItem(RECENT_ROOM_KEY, room.id);
-        room = toSave;
+        room = cleanForStorage;
       } catch (e) {
         console.warn('LocalStorage save failed', e);
       }
@@ -1202,7 +1218,14 @@
     function loadRoomFromStorage(roomId) {
       try {
         const data = localStorage.getItem(STORAGE_PREFIX + roomId);
-        if (data) return JSON.parse(data);
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (parsed && typeof parsed === 'object') {
+            parsed.participants = (parsed.participants || []).filter(p => p.id !== 'p_new_visitor');
+            parsed.votes = (parsed.votes || []).filter(v => v.participantId !== 'p_new_visitor');
+          }
+          return parsed;
+        }
       } catch (e) {
         console.warn('LocalStorage load failed', e);
       }
@@ -2319,11 +2342,18 @@
     }
 
     // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING)
+    // Only count votes from actual joined participants (excluding unsaved 'p_new_visitor' drafts)
     function getSlotAttendees(date, slot) {
       const set = new Set();
-      if (!state.event || !state.event.votes) return [];
+      if (!state.event || !state.event.votes || !state.event.participants) return [];
+      const validPids = new Set(
+        state.event.participants
+          .filter(p => p && p.id && p.id !== 'p_new_visitor')
+          .map(p => p.id)
+      );
       state.event.votes.forEach(v => {
         if (v.date !== date) return;
+        if (!validPids.has(v.participantId)) return;
         if (v.slot === slot || (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY')) {
           set.add(v.participantId);
         }
@@ -2620,12 +2650,9 @@
           v => v.date === dateStr && v.participantId === actorId && (v.slot === slot.id || (slot.id !== 'ALL_DAY' && v.slot === 'ALL_DAY'))
         );
         const attendeeIds = getSlotAttendees(dateStr, slot.id);
-        const names = attendeeIds.map(id => {
-          const p = state.event.participants.find(x => x.id === id);
-          if (p) return p.nickname;
-          if (id === actorId) return document.getElementById('myNicknameInput').value || '我 (草稿)';
-          return '參加者';
-        });
+        const names = attendeeIds
+          .map(id => state.event.participants.find(x => x.id === id)?.nickname)
+          .filter(Boolean);
 
         return `
           <div class="rounded-2xl border bg-white p-3.5 transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
@@ -2694,7 +2721,16 @@
 
     // ==================== TOP 3 LEADERBOARD ====================
     function renderTop3Leaderboard() {
-      const distinctVoters = new Set(state.event.votes.map(v => v.participantId)).size;
+      const validPids = new Set(
+        (state.event.participants || [])
+          .filter(p => p && p.id && p.id !== 'p_new_visitor')
+          .map(p => p.id)
+      );
+      const distinctVoters = new Set(
+        (state.event.votes || [])
+          .filter(v => validPids.has(v.participantId))
+          .map(v => v.participantId)
+      ).size;
       const card = document.getElementById('top3Card');
       if (distinctVoters < 2) {
         card.classList.add('hidden');
@@ -2712,7 +2748,9 @@
       const medals = ['🥇 1', '🥈 2', '🥉 3'];
       list.innerHTML = top.map((item, idx) => {
         const slotObj = SLOTS.find(s => s.id === item.slot);
-        const names = item.ids.map(id => state.event.participants.find(p => p.id === id)?.nickname || '我 (草稿)');
+        const names = item.ids
+          .map(id => state.event.participants.find(p => p.id === id)?.nickname)
+          .filter(Boolean);
         return `
           <div onclick="openSlotSheet('${item.date}')" class="cursor-pointer rounded-2xl border border-stone-100 bg-stone-50/80 p-3 hover:bg-stone-100/80 transition">
             <div class="flex items-center justify-between gap-2">
@@ -3513,6 +3551,8 @@
           const payload = JSON.parse(JSON.stringify(room));
           payload.storageMode = 'cloud';
           payload.updatedAt = new Date().toISOString();
+          payload.participants = (payload.participants || []).filter(p => p.id !== 'p_new_visitor');
+          payload.votes = (payload.votes || []).filter(v => v.participantId !== 'p_new_visitor');
           await setDoc(doc(db, 'rooms', room.id), payload, { merge: true });
           window.state.cloudConnected = true;
           return true;
@@ -3529,6 +3569,8 @@
           if (snap.exists()) {
             const data = snap.data();
             data.storageMode = 'cloud';
+            data.participants = (data.participants || []).filter(p => p.id !== 'p_new_visitor');
+            data.votes = (data.votes || []).filter(v => v.participantId !== 'p_new_visitor');
             window.state.cloudConnected = true;
             return data;
           }
@@ -3553,6 +3595,8 @@
             if (!snap.exists()) return;
             const cloudRoom = snap.data();
             cloudRoom.storageMode = 'cloud';
+            cloudRoom.participants = (cloudRoom.participants || []).filter(p => p.id !== 'p_new_visitor');
+            cloudRoom.votes = (cloudRoom.votes || []).filter(v => v.participantId !== 'p_new_visitor');
             window.state.cloudConnected = true;
 
             // Only update if this room is still the active room
