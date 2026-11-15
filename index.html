@@ -455,6 +455,9 @@
             <span id="myStatusBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-700">
               ✓ 已占名額（同裝置可編輯）
             </span>
+            <button type="button" id="leaveGatheringBtn" onclick="leaveGathering()" class="hidden rounded-full bg-red-50 px-2.5 py-1 text-xs font-extrabold text-red-600 hover:bg-red-100 active:scale-95 transition">
+              🚪 退出揪團
+            </button>
             <button type="button" id="switchNewParticipantBtn" onclick="switchToNewParticipantMode()" class="hidden rounded-full bg-peach-100 px-2.5 py-1 text-xs font-extrabold text-peach-700 hover:bg-peach-200 active:scale-95 transition">
               ➕ 以新受邀者身分報名
             </button>
@@ -526,12 +529,12 @@
       <div class="rounded-3xl border border-brand-100 bg-white p-4 shadow-soft space-y-3">
         <div class="flex items-center justify-between">
           <h2 class="flex items-center gap-2 text-lg font-extrabold text-ink">
-            <span>👑</span> <span id="rosterTitle">參加著名單與主辦人管理</span>
+            <span>👑</span> <span id="rosterTitle">總參加名單</span>
           </h2>
           <span id="rosterCountBadge" class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-extrabold text-brand-700">--</span>
         </div>
         <p id="hostPrivilegeHint" class="rounded-2xl bg-stone-50 px-3 py-2 text-xs text-ink-mute">
-          💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」與「拍板定案（鎖定表單並匯出 .ics）」。
+          💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」功能。
         </p>
         <ul id="attendeeList" class="divide-y divide-stone-100"></ul>
 
@@ -2523,6 +2526,10 @@
       if (switchHostBtn) {
         switchHostBtn.classList.toggle('hidden', !isCreatorBrowser || actorId === 'p_host');
       }
+      const leaveBtn = document.getElementById('leaveGatheringBtn');
+      if (leaveBtn) {
+        leaveBtn.classList.toggle('hidden', !joined || !myRecord || myRecord.isHost || ev.isFinalized);
+      }
 
       // Sticky bar button text
       const myVotesCount = ev.votes.filter(v => v.participantId === actorId).length;
@@ -2928,38 +2935,106 @@
       renderRoom();
     }
 
-    // ==================== HOST CONTROLS (KICK & FINALIZE) ====================
+    // ==================== HOST CONTROLS (KICK & FINALIZE) & PARTICIPANT LEAVE ====================
+    function isRoomHostViewer(ev = state.event) {
+      if (!ev) return false;
+      const actorId = currentActorId();
+      const myRecord = (ev.participants || []).find(p => p.id === actorId);
+      if (myRecord && myRecord.isHost) return true;
+      if (actorId === 'p_host') return true;
+      const isCreatorUid = Boolean(ev.hostUid && state.user?.uid && ev.hostUid === state.user.uid);
+      if (isCreatorUid && state.viewerMode !== 'new_guest') return true;
+      return false;
+    }
+
     function renderAttendeeRoster() {
       const ev = state.event;
       const list = document.getElementById('attendeeList');
       const hint = document.getElementById('hostPrivilegeHint');
       const finalizeBar = document.getElementById('hostFinalizeBar');
+      const actorId = currentActorId();
+      const isHost = isRoomHostViewer(ev);
 
-      hint.classList.toggle('hidden', state.isMember);
-      finalizeBar.classList.toggle('hidden', !state.isMember || ev.isFinalized);
+      // Show member kick privilege hint only to Guest Host when room is not finalized
+      hint.classList.toggle('hidden', !isHost || state.isMember || ev.isFinalized);
+      // Both Guest Host and Member Host can finalize the gathering
+      finalizeBar.classList.toggle('hidden', !isHost || ev.isFinalized);
 
-      list.innerHTML = ev.participants.map(p => `
-        <li class="flex items-center justify-between py-2.5">
-          <div class="flex items-center gap-2.5">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
-              ${p.nickname.slice(0, 2)}
-            </span>
-            <div>
-              <span class="font-bold text-ink text-sm">${p.nickname}</span>
-              ${p.isHost ? `<span class="ml-1.5 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+      list.innerHTML = ev.participants.map(p => {
+        const isMeNonHost = p.id === actorId && !p.isHost;
+        const canKick = isHost && state.isMember && !p.isHost && !ev.isFinalized;
+        const canLeave = isMeNonHost && !ev.isFinalized;
+        return `
+          <li class="flex items-center justify-between py-2.5">
+            <div class="flex items-center gap-2.5">
+              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
+                ${p.nickname.slice(0, 2)}
+              </span>
+              <div>
+                <span class="font-bold text-ink text-sm">${p.nickname}</span>
+                ${p.isHost ? `<span class="ml-1.5 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+              </div>
             </div>
-          </div>
-          ${state.isMember && !p.isHost && !ev.isFinalized ? `
-            <button onclick="kickAttendee('${p.id}')" class="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-extrabold text-red-600 hover:bg-red-100">
-              剔除並釋出名額
-            </button>
-          ` : ''}
-        </li>
-      `).join('');
+            ${canLeave ? `
+              <button type="button" onclick="leaveGathering()" class="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-extrabold text-red-600 hover:bg-red-100 active:scale-95 transition">
+                🚪 退出揪團
+              </button>
+            ` : canKick ? `
+              <button type="button" onclick="kickAttendee('${p.id}')" class="rounded-xl bg-red-50 px-3 py-1.5 text-xs font-extrabold text-red-600 hover:bg-red-100 active:scale-95 transition">
+                剔除並釋出名額
+              </button>
+            ` : ''}
+          </li>
+        `;
+      }).join('');
+    }
+
+    function leaveGathering() {
+      const ev = state.event;
+      if (!ev) return;
+      if (ev.isFinalized) {
+        showToast('⚠️ 活動已拍板定案並鎖定，無法退出！');
+        return;
+      }
+      const actorId = currentActorId();
+      const target = (ev.participants || []).find(p => p.id === actorId);
+      if (!target || target.isHost) return;
+
+      const leftNickname = target.nickname;
+      const nowTs = Date.now();
+      ev.participants = ev.participants.filter(p => p.id !== actorId);
+      ev.votes = (ev.votes || []).filter(v => v.participantId !== actorId);
+      ev.kickedIds = ev.kickedIds || {};
+      ev.kickedIds[actorId] = nowTs;
+      ev.updatedAt = nowTs;
+
+      try {
+        if (localStorage.getItem('squadup_my_pid_' + ev.id) === actorId) {
+          localStorage.removeItem('squadup_my_pid_' + ev.id);
+        }
+      } catch (e) {}
+      setTabActorForRoom(ev.id, 'p_new_visitor');
+      state.viewerMode = 'new_guest';
+      window.__draftLocId = ev.locations?.[0]?.id || null;
+
+      const nickInput = document.getElementById('myNicknameInput');
+      if (nickInput) {
+        nickInput.value = getPreferredNickname();
+      }
+
+      saveRoomToStorage(ev);
+      updateUrlHash(ev);
+      renderRoom();
+      renderDashboard();
+      showToast(`👋 「${leftNickname}」已退出揪團，釋出 1 個名額（目前 ${ev.participants.length}/${ev.maxParticipants} 人）`);
     }
 
     function kickAttendee(participantId) {
       const ev = state.event;
+      if (!isRoomHostViewer(ev) || !state.isMember) {
+        showToast('⚠️ 僅會員主辦人可剔除參加者！');
+        return;
+      }
       const target = ev.participants.find(p => p.id === participantId);
       if (!target || target.isHost) return;
       ev.participants = ev.participants.filter(p => p.id !== participantId);
@@ -2975,6 +3050,10 @@
 
     function finalizeGathering() {
       const ev = state.event;
+      if (!isRoomHostViewer(ev)) {
+        showToast('⚠️ 僅主辦人可拍板定案！');
+        return;
+      }
       const top = computeTop3();
       const chosenDate = top[0]?.date || dateOffsetStr(3);
       const chosenSlot = top[0]?.slot || 'EVENING';
@@ -3292,8 +3371,9 @@
       ['點選日期彈出底部抽屜，勾選你有空的時段','Select a date to choose your available times','日付を選び、参加できる時間帯を指定してください'],
       ['本月','This month','今月'],['下個月','Next month','来月'],['少','Fewer','少'],['多（最熱門）','More (most popular)','多（人気）'],['我已勾選','My choice','自分の選択'],
       ['最佳時段排行榜 Top 3','Top 3 available times','候補日時トップ3'],['點擊可查看名單','Select to see participants','選択して参加者を確認'],
-      ['地點投票 / 資訊區','Place voting / details','場所の投票・詳細'],['參加著名單與主辦人管理','Participants and host controls','参加者一覧と幹事の管理'],
-      ['💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」與「拍板定案（鎖定表單並匯出 .ics）」。','💡 Sign in with Google to manage participants and finalize the gathering.','💡 Googleでログインすると、参加者の管理と予定の確定ができます。'],
+      ['地點投票 / 資訊區','Place voting / details','場所の投票・詳細'],['總參加名單','All participants','参加者一覧'],['參加著名單與主辦人管理','All participants','参加者一覧'],
+      ['💡 點擊右上角「Google 登入」切換為會員主辦人，即可解鎖「剔除參加者（即時釋出名額並重算票數）」功能。','💡 Sign in with Google as the host to unlock removing participants and recalculating votes.','💡 Googleでログインすると、参加者の削除と票数の再計算が利用できます。'],
+      ['🚪 退出揪團','🚪 Leave gathering','🚪 募集から退出'],['退出揪團','Leave gathering','募集から退出'],['剔除並釋出名額','Remove & free spot','削除して枠を空ける'],['👑 主辦人','👑 Host','👑 幹事'],
       ['✅ 拍板定案（以第一名時段與最高票地點鎖定揪團）','✅ Finalize with the top time and place','✅ 最上位の日時と場所で確定'],
       ['我的揪團紀錄','Gathering history','募集履歴'],['註冊成會員之後即可以跨裝置管理活動。','Sign in to manage gatherings across devices.','ログインすると複数の端末で募集を管理できます。'],
       ['🔄 同步雲端','🔄 Sync cloud','🔄 クラウドと同期'],['目前為訪客模式','Guest mode','ゲストモード'],
