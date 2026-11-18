@@ -2186,8 +2186,7 @@
               <span class="rounded-full bg-peach-100 px-2.5 py-0.5 text-xs font-bold text-peach-700">候選地點 ${i + 1}</span>
               <button type="button" onclick="removeCreateLoc(${i})" class="text-xs font-bold text-red-600 hover:underline">移除</button>
             </div>
-            <input type="text" value="${loc.name}" onchange="updateCreateLoc(${i}, 'name', this.value)" aria-label="候選地點 ${i + 1} 名稱" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-sm" />
-            <input type="text" value="${loc.notes || ''}" onchange="updateCreateLoc(${i}, 'notes', this.value)" aria-label="候選地點 ${i + 1} 備註" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-xs text-ink-soft" />
+            <input type="text" value="${loc.name}" oninput="updateCreateLoc(${i}, 'name', this.value)" onchange="updateCreateLoc(${i}, 'name', this.value)" placeholder="輸入候選地點名稱或地址" aria-label="候選地點 ${i + 1} 名稱" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-sm focus:border-brand-500 focus:outline-none" />
           </div>
         `).join('');
       }
@@ -3268,18 +3267,20 @@
 
       // 2-3 locations: Radio voting cards
       const totalVotes = state.event.participants.filter(p => p.locationId).length;
+      const readOnly = isReadOnly();
       container.innerHTML = locs.map(l => {
         const votes = state.event.participants.filter(p => p.locationId === l.id).length;
         const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
         const selected = myChoice === l.id;
+        const mapHref = l.mapUrl || ('https://maps.google.com/?q=' + encodeURIComponent(l.name));
         return `
           <div class="overflow-hidden rounded-2xl border bg-white transition ${selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
-            <button
-              type="button"
-              ${isReadOnly() ? 'disabled' : `onclick="voteLocation('${l.id}')"`}
-              class="flex w-full items-center justify-between gap-3 p-3.5 text-left"
-            >
-              <div class="flex items-center gap-3 min-w-0">
+            <div class="flex w-full items-center justify-between gap-2.5 p-3.5">
+              <button
+                type="button"
+                ${readOnly ? 'disabled' : `onclick="voteLocation('${l.id}')"`}
+                class="flex flex-1 items-center gap-3 min-w-0 text-left"
+              >
                 <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
                   selected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300'
                 }">${selected ? '✓' : ''}</span>
@@ -3287,12 +3288,27 @@
                   <span class="block truncate font-extrabold text-ink text-sm">${l.name}</span>
                   ${l.notes ? `<span class="block truncate text-xs text-ink-mute">${l.notes}</span>` : ''}
                 </div>
+              </button>
+              <div class="flex items-center gap-2.5 shrink-0">
+                <a
+                  href="${mapHref}"
+                  target="_blank"
+                  rel="noopener"
+                  onclick="event.stopPropagation()"
+                  class="shrink-0 rounded-full bg-peach-200 px-3 py-1.5 text-xs font-extrabold text-peach-700 hover:bg-peach-300/80 active:scale-95 transition"
+                >
+                  🗺️ 開啟地圖
+                </a>
+                <button
+                  type="button"
+                  ${readOnly ? 'disabled' : `onclick="voteLocation('${l.id}')"`}
+                  class="text-right shrink-0 min-w-[36px]"
+                >
+                  <span class="text-base font-extrabold text-brand-700">${votes} 票</span>
+                  <span class="block text-[11px] text-ink-mute">${pct}%</span>
+                </button>
               </div>
-              <div class="text-right shrink-0">
-                <span class="text-base font-extrabold text-brand-700">${votes} 票</span>
-                <span class="block text-[11px] text-ink-mute">${pct}%</span>
-              </div>
-            </button>
+            </div>
             <div class="h-1.5 bg-stone-100">
               <div class="h-full bg-brand-500 transition-all duration-300" style="width:${pct}%"></div>
             </div>
@@ -4100,7 +4116,8 @@
       ['自訂自由時段','Custom Time Range','自由な時間帯を指定'],
       ['左右滑動設定你有空的起訖時間（每格 30 分鐘）','Drag the sliders to set your free time (30-min steps)','スライダーを動かして空き時間を指定（30分単位）'],
       ['開始時間','Start','開始'],
-      ['結束時間','End','終了']
+      ['結束時間','End','終了'],
+      ['輸入候選地點名稱或地址','Enter place name or address','候補の場所名または住所を入力']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
