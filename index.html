@@ -69,7 +69,57 @@
     .bottom-sheet-panel {
       transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
     }
+    .dual-range-input {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      pointer-events: none;
+      margin: 0;
+    }
+    .dual-range-input::-webkit-slider-runnable-track {
+      height: 8px;
+      background: transparent;
+    }
+    .dual-range-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      pointer-events: auto;
+      height: 26px;
+      width: 26px;
+      border-radius: 9999px;
+      background: #FFFFFF;
+      border: 3px solid #795238;
+      box-shadow: 0 2px 6px rgba(45, 55, 72, 0.22);
+      cursor: grab;
+      margin-top: -9px;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    }
+    .dual-range-input::-webkit-slider-thumb:hover {
+      transform: scale(1.08);
+      box-shadow: 0 3px 10px rgba(45, 55, 72, 0.28);
+    }
+    .dual-range-input::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.15);
+      background: #FAF6F1;
+    }
+    .dual-range-input::-moz-range-track {
+      height: 8px;
+      background: transparent;
+    }
+    .dual-range-input::-moz-range-thumb {
+      pointer-events: auto;
+      height: 26px;
+      width: 26px;
+      border-radius: 9999px;
+      background: #FFFFFF;
+      border: 3px solid #795238;
+      box-shadow: 0 2px 6px rgba(45, 55, 72, 0.22);
+      cursor: grab;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
 <body class="min-h-screen pb-28">
 
@@ -432,11 +482,23 @@
               </button>
             </div>
 
-            <!-- OG Preview Card -->
-            <div class="rounded-2xl border border-stone-200/70 bg-white p-3 space-y-0.5">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-brand-700">LINE / Discord 動態 Open Graph 預覽</span>
-              <p id="ogPreviewTitle" class="text-xs font-extrabold text-ink">揪團活動 | 揪一下 Squad Up</p>
-              <p id="ogPreviewDesc" class="text-[11px] text-ink-soft">點進來選你有空的時間！</p>
+            <!-- Auto-generated Invite Link QR Code Card -->
+            <div id="shareQrCard" class="flex flex-col sm:flex-row items-center gap-3.5 rounded-2xl border border-stone-200/70 bg-white p-3.5">
+              <div class="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-2xl border border-stone-200/80 bg-white p-2 shadow-sm">
+                <canvas id="shareQrCanvas" width="240" height="240" class="h-full w-full rounded-lg"></canvas>
+              </div>
+              <div class="min-w-0 flex-1 text-center sm:text-left space-y-1">
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-brand-700">
+                  <span>📱</span> <span>邀請連結 QR Code</span>
+                </span>
+                <p id="ogPreviewTitle" class="text-xs font-extrabold text-ink truncate">揪團活動 | 揪一下 Squad Up</p>
+                <p id="ogPreviewDesc" class="text-[11px] text-ink-soft leading-relaxed">掃描 QR Code 即可直接進入房間選時間！</p>
+                <div class="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <button type="button" onclick="downloadShareQrCode()" class="inline-flex h-8 items-center gap-1 rounded-xl bg-brand-50 px-3 text-xs font-bold text-brand-700 hover:bg-brand-100 active:scale-95 transition">
+                    <span>⬇️</span> <span>下載 QR Code</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -624,7 +686,7 @@
       </div>
       <button onclick="closeSlotSheet()" class="rounded-full bg-stone-200/70 px-3 py-1.5 text-xs font-bold text-ink-soft">關閉</button>
     </div>
-    <div id="sheetSlotsContainer" class="max-h-[60vh] space-y-2.5 overflow-y-auto px-4 pb-4"></div>
+    <div id="sheetSlotsContainer" class="max-h-[68vh] space-y-2.5 overflow-y-auto px-4 pb-4"></div>
     <div class="border-t border-stone-200/70 bg-cream px-4 py-3">
       <button onclick="closeSlotSheet()" class="h-12 w-full rounded-2xl bg-brand-600 text-base font-extrabold text-white active:scale-[.98] transition">
         完成選擇
@@ -2344,7 +2406,73 @@
       return false;
     }
 
-    // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING)
+    // ==================== CUSTOM TIME SLOT HELPERS & OVERLAP ENGINE ====================
+    function isCustomSlot(slotId) {
+      return typeof slotId === 'string' && slotId.startsWith('CUSTOM:');
+    }
+
+    function stepToTimeStr(step) {
+      const clamped = Math.max(0, Math.min(48, Math.round(Number(step) || 0)));
+      const hrs = Math.floor(clamped / 2);
+      const mins = (clamped % 2) * 30;
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    }
+
+    function timeStrToStep(timeStr) {
+      if (!timeStr || typeof timeStr !== 'string') return 0;
+      const parts = timeStr.trim().split(':');
+      if (parts.length !== 2) return 0;
+      const h = parseInt(parts[0], 10) || 0;
+      const m = parseInt(parts[1], 10) || 0;
+      return Math.max(0, Math.min(48, h * 2 + (m >= 30 ? 1 : 0)));
+    }
+
+    function parseSlotTimeWindow(slotId) {
+      if (slotId === 'ALL_DAY') return { startStep: 18, endStep: 44, startStr: '09:00', endStr: '22:00' };
+      if (slotId === 'MORNING') return { startStep: 18, endStep: 24, startStr: '09:00', endStr: '12:00' };
+      if (slotId === 'AFTERNOON') return { startStep: 26, endStep: 34, startStr: '13:00', endStr: '17:00' };
+      if (slotId === 'EVENING') return { startStep: 36, endStep: 44, startStr: '18:00', endStr: '22:00' };
+      if (isCustomSlot(slotId)) {
+        const raw = slotId.slice(7);
+        const [s, e] = raw.split('-');
+        const startStep = timeStrToStep(s || '14:00');
+        const endStep = Math.max(startStep + 1, timeStrToStep(e || '18:00'));
+        return {
+          startStep,
+          endStep,
+          startStr: stepToTimeStr(startStep),
+          endStr: stepToTimeStr(endStep)
+        };
+      }
+      return null;
+    }
+
+    function formatSlotDisplayLabel(slotId, lang = state.lang, includeSub = false) {
+      const slotObj = SLOTS.find(s => s.id === slotId);
+      if (slotObj) {
+        const base = slotObj.label[lang] || slotObj.label['zh-TW'];
+        return includeSub ? `${base} (${slotObj.sub})` : base;
+      }
+      if (isCustomSlot(slotId)) {
+        const win = parseSlotTimeWindow(slotId);
+        if (win) {
+          if (lang === 'en') return `Custom (${win.startStr} - ${win.endStr})`;
+          if (lang === 'ja') return `自由時間 (${win.startStr} - ${win.endStr})`;
+          return `自訂時段 (${win.startStr} - ${win.endStr})`;
+        }
+      }
+      return slotId;
+    }
+
+    function formatDurationSteps(steps, lang = state.lang) {
+      const hrs = Math.max(0.5, steps * 0.5);
+      const hrText = Number.isInteger(hrs) ? String(hrs) : hrs.toFixed(1);
+      if (lang === 'en') return `${hrText} hr${hrs === 1 ? '' : 's'}`;
+      if (lang === 'ja') return `計 ${hrText} 時間`;
+      return `共 ${hrText} 小時`;
+    }
+
+    // Calculate overlap per date and slot (ALL_DAY counts toward MORNING, AFTERNOON, EVENING, and custom slots within 09:00-22:00; covering custom ranges also count)
     // Only count votes from actual joined participants (excluding unsaved 'p_new_visitor' drafts)
     function getSlotAttendees(date, slot) {
       const set = new Set();
@@ -2354,19 +2482,58 @@
           .filter(p => p && p.id && p.id !== 'p_new_visitor')
           .map(p => p.id)
       );
+      const targetWin = parseSlotTimeWindow(slot);
       state.event.votes.forEach(v => {
         if (v.date !== date) return;
         if (!validPids.has(v.participantId)) return;
-        if (v.slot === slot || (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY')) {
+        if (v.slot === slot) {
           set.add(v.participantId);
+          return;
+        }
+        if (slot !== 'ALL_DAY' && v.slot === 'ALL_DAY') {
+          if (!isCustomSlot(slot) || (targetWin && targetWin.startStep >= 18 && targetWin.endStep <= 44)) {
+            set.add(v.participantId);
+            return;
+          }
+        }
+        if (targetWin && (isCustomSlot(v.slot) || isCustomSlot(slot))) {
+          const voteWin = parseSlotTimeWindow(v.slot);
+          if (voteWin && voteWin.startStep <= targetWin.startStep && voteWin.endStep >= targetWin.endStep) {
+            set.add(v.participantId);
+          }
         }
       });
       return [...set];
     }
 
+    function getDateCandidateSlots(date) {
+      const set = new Set(['ALL_DAY', 'MORNING', 'AFTERNOON', 'EVENING']);
+      if (!state.event || !state.event.votes) return [...set];
+      const customWins = [];
+      state.event.votes.forEach(v => {
+        if (v.date === date && isCustomSlot(v.slot)) {
+          set.add(v.slot);
+          const w = parseSlotTimeWindow(v.slot);
+          if (w) customWins.push(w);
+        }
+      });
+      // Also include pairwise overlapping intersections (>= 1 hr) between custom slots on the same date
+      for (let i = 0; i < customWins.length; i++) {
+        for (let j = i + 1; j < customWins.length; j++) {
+          const s = Math.max(customWins[i].startStep, customWins[j].startStep);
+          const e = Math.min(customWins[i].endStep, customWins[j].endStep);
+          if (e - s >= 2) {
+            set.add(`CUSTOM:${stepToTimeStr(s)}-${stepToTimeStr(e)}`);
+          }
+        }
+      }
+      return [...set];
+    }
+
     function getDateBestOverlap(date) {
       let best = 0;
-      ['MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+      const candidates = getDateCandidateSlots(date).filter(s => s !== 'ALL_DAY');
+      candidates.forEach(slot => {
         const count = getSlotAttendees(date, slot).length;
         if (count > best) best = count;
       });
@@ -2378,7 +2545,7 @@
       const dates = [...new Set(state.event.votes.map(v => v.date))].sort();
       const candidates = [];
       dates.forEach(date => {
-        ['ALL_DAY', 'MORNING', 'AFTERNOON', 'EVENING'].forEach(slot => {
+        getDateCandidateSlots(date).forEach(slot => {
           const ids = getSlotAttendees(date, slot);
           if (ids.length >= 2) {
             candidates.push({ date, slot, count: ids.length, ids });
@@ -2464,8 +2631,10 @@
         const top = computeTop3();
         const chosenDate = ev.finalDate || top[0]?.date || dateOffsetStr(3);
         const chosenSlot = ev.finalSlot || top[0]?.slot || 'EVENING';
-        const slotObj = SLOTS.find(s => s.id === chosenSlot);
-        const slotLabel = slotObj ? `${slotObj.label[state.lang] || slotObj.label['zh-TW']} (${slotObj.sub})` : chosenSlot;
+        const slotLabel = formatSlotDisplayLabel(chosenSlot, state.lang, true);
+        const win = parseSlotTimeWindow(chosenSlot) || { startStr: '18:00', endStr: '22:00' };
+        const startHms = win.startStr.replace(':', '') + '00';
+        const endHms = (win.endStr === '24:00' ? '235900' : win.endStr.replace(':', '') + '00');
 
         let chosenLoc = ev.finalLocation;
         if (!chosenLoc) {
@@ -2490,7 +2659,7 @@
         const gcalEl = document.getElementById('gcalLink');
         if (gcalEl) {
           const compactDate = chosenDate.replace(/-/g, '');
-          gcalEl.href = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T180000/${compactDate}T220000&location=${encodeURIComponent(chosenLoc)}`;
+          gcalEl.href = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T${startHms}/${compactDate}T${endHms}&location=${encodeURIComponent(chosenLoc)}`;
         }
       }
 
@@ -2645,6 +2814,25 @@
       setTimeout(() => backdrop.classList.add('hidden'), 250);
     }
 
+    function getCustomSlotDraft(dateStr, actorId) {
+      state.customSlotDrafts = state.customSlotDrafts || {};
+      const myCustomVote = (state.event?.votes || []).find(
+        v => v.date === dateStr && v.participantId === actorId && isCustomSlot(v.slot)
+      );
+      if (myCustomVote) {
+        const win = parseSlotTimeWindow(myCustomVote.slot);
+        if (win) {
+          state.customSlotDrafts[dateStr] = { startStep: win.startStep, endStep: win.endStep };
+          return { selected: true, startStep: win.startStep, endStep: win.endStep, slotId: myCustomVote.slot };
+        }
+      }
+      const saved = state.customSlotDrafts[dateStr] || { startStep: 28, endStep: 36 }; // Default 14:00 - 18:00
+      const s = Math.max(0, Math.min(47, saved.startStep));
+      const e = Math.max(s + 1, Math.min(48, saved.endStep));
+      const slotId = `CUSTOM:${stepToTimeStr(s)}-${stepToTimeStr(e)}`;
+      return { selected: false, startStep: s, endStep: e, slotId };
+    }
+
     function renderSheetSlots() {
       const dateStr = state.activeSheetDate;
       if (!dateStr) return;
@@ -2652,7 +2840,7 @@
       const readOnly = isReadOnly();
       const container = document.getElementById('sheetSlotsContainer');
 
-      container.innerHTML = SLOTS.map(slot => {
+      const presetHtml = SLOTS.map(slot => {
         const selected = state.event.votes.some(
           v => v.date === dateStr && v.participantId === actorId && (v.slot === slot.id || (slot.id !== 'ALL_DAY' && v.slot === 'ALL_DAY'))
         );
@@ -2691,6 +2879,272 @@
           </div>
         `;
       }).join('');
+
+      // Custom Time Slot Card with intuitive Dual-Thumb Slider
+      const customDraft = getCustomSlotDraft(dateStr, actorId);
+      const customSelected = customDraft.selected;
+      const startStr = stepToTimeStr(customDraft.startStep);
+      const endStr = stepToTimeStr(customDraft.endStep);
+      const durationStr = formatDurationSteps(customDraft.endStep - customDraft.startStep, state.lang);
+      const leftPct = (customDraft.startStep / 48) * 100;
+      const widthPct = ((customDraft.endStep - customDraft.startStep) / 48) * 100;
+      const startZ = customDraft.startStep > 36 ? 'z-30' : 'z-10';
+
+      const customAttendeeIds = getSlotAttendees(dateStr, customDraft.slotId);
+      const customNames = customAttendeeIds
+        .map(id => state.event.participants.find(x => x.id === id)?.nickname)
+        .filter(Boolean);
+
+      // Collect all custom slots voted by joined participants on this date
+      const validPidSet = new Set(
+        (state.event.participants || []).filter(p => p && p.id && p.id !== 'p_new_visitor').map(p => p.id)
+      );
+      const otherCustomEntries = [];
+      (state.event.votes || []).forEach(v => {
+        if (v.date === dateStr && isCustomSlot(v.slot) && validPidSet.has(v.participantId)) {
+          const pName = state.event.participants.find(x => x.id === v.participantId)?.nickname;
+          const win = parseSlotTimeWindow(v.slot);
+          if (pName && win) {
+            otherCustomEntries.push({ nickname: pName, slotId: v.slot, startStep: win.startStep, endStep: win.endStep, label: `${win.startStr} - ${win.endStr}` });
+          }
+        }
+      });
+
+      const customCardTitle = state.lang === 'en' ? 'Custom Time Range' : state.lang === 'ja' ? '自由な時間帯を指定' : '自訂自由時段';
+      const customHintText = state.lang === 'en'
+        ? 'Drag the sliders to set your free time (30-min steps)'
+        : state.lang === 'ja'
+          ? 'スライダーを動かして空き時間を指定（30分単位）'
+          : '左右滑動設定你有空的起訖時間（每格 30 分鐘）';
+
+      const customHtml = `
+        <div id="customSlotCard" class="rounded-2xl border bg-white p-3.5 transition ${customSelected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-stone-200'}">
+          <button
+            type="button"
+            ${readOnly ? 'disabled' : `onclick="toggleCustomDateSlot('${dateStr}')"`}
+            class="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div class="flex items-center gap-3">
+              <span id="customSlotCheckCircle" class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold ${
+                customSelected ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white'
+              }">
+                ${customSelected ? '✓' : ''}
+              </span>
+              <div>
+                <span class="block font-extrabold text-ink">${customCardTitle}</span>
+                <span id="customSlotSubText" class="block text-xs font-semibold text-brand-700">${startStr} - ${endStr}（${durationStr}）</span>
+              </div>
+            </div>
+            <span id="customSlotCountBadge" class="shrink-0 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">
+              👥 ${customNames.length} 人有空
+            </span>
+          </button>
+
+          <!-- Intuitive Dual-Thumb Time Range Slider -->
+          <div class="mt-3 rounded-2xl border border-stone-200/80 bg-stone-50/90 px-3.5 py-3 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[11px] font-bold text-ink-soft">${customHintText}</span>
+              <span id="customDurationBadge" class="shrink-0 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">${durationStr}</span>
+            </div>
+
+            <!-- Live Start & End Time Display Badges -->
+            <div class="flex items-center justify-center gap-2 py-0.5">
+              <div class="flex flex-1 items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-1.5 shadow-sm">
+                <span class="text-[11px] font-bold text-ink-mute">開始時間</span>
+                <span id="customStartBadge" class="font-mono text-sm font-extrabold text-brand-700">${startStr}</span>
+              </div>
+              <span class="text-xs font-extrabold text-stone-400">→</span>
+              <div class="flex flex-1 items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-1.5 shadow-sm">
+                <span class="text-[11px] font-bold text-ink-mute">結束時間</span>
+                <span id="customEndBadge" class="font-mono text-sm font-extrabold text-brand-700">${endStr}</span>
+              </div>
+            </div>
+
+            <!-- Dual-Range Track & Thumbs -->
+            <div class="relative pt-1 pb-0.5">
+              <div class="relative flex h-8 items-center select-none">
+                <div class="h-2.5 w-full rounded-full bg-stone-200/90 relative overflow-hidden">
+                  <div
+                    id="customRangeFill"
+                    class="absolute top-0 bottom-0 rounded-full ${customSelected ? 'bg-brand-600' : 'bg-brand-400/80'}"
+                    style="left: ${leftPct}%; width: ${widthPct}%;"
+                  ></div>
+                </div>
+                <input
+                  id="customStartRange"
+                  type="range"
+                  min="0"
+                  max="48"
+                  step="1"
+                  value="${customDraft.startStep}"
+                  ${readOnly ? 'disabled' : ''}
+                  aria-label="自訂開始時間滑桿"
+                  oninput="handleCustomSliderInput('${dateStr}', 'start', this.value)"
+                  onchange="commitCustomSliderChange('${dateStr}')"
+                  class="dual-range-input absolute inset-x-0 w-full ${startZ}"
+                />
+                <input
+                  id="customEndRange"
+                  type="range"
+                  min="0"
+                  max="48"
+                  step="1"
+                  value="${customDraft.endStep}"
+                  ${readOnly ? 'disabled' : ''}
+                  aria-label="自訂結束時間滑桿"
+                  oninput="handleCustomSliderInput('${dateStr}', 'end', this.value)"
+                  onchange="commitCustomSliderChange('${dateStr}')"
+                  class="dual-range-input absolute inset-x-0 w-full z-20"
+                />
+              </div>
+              <div class="flex justify-between px-0.5 text-[10px] font-mono font-bold text-stone-400">
+                <span>00:00</span>
+                <span>06:00</span>
+                <span>12:00</span>
+                <span>18:00</span>
+                <span>24:00</span>
+              </div>
+            </div>
+
+            <!-- Quick Preset Time Range Chips -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <button type="button" ${readOnly ? 'disabled' : `onclick="selectPresetCustomRange('${dateStr}', 20, 30)"`} class="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-bold text-ink-soft hover:border-brand-400 hover:text-brand-700 active:scale-95 transition">10:00 - 15:00</button>
+              <button type="button" ${readOnly ? 'disabled' : `onclick="selectPresetCustomRange('${dateStr}', 28, 36)"`} class="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-bold text-ink-soft hover:border-brand-400 hover:text-brand-700 active:scale-95 transition">14:00 - 18:00</button>
+              <button type="button" ${readOnly ? 'disabled' : `onclick="selectPresetCustomRange('${dateStr}', 38, 46)"`} class="rounded-full border border-stone-200 bg-white px-2.5 py-1 text-[11px] font-bold text-ink-soft hover:border-brand-400 hover:text-brand-700 active:scale-95 transition">19:00 - 23:00</button>
+            </div>
+          </div>
+
+          ${otherCustomEntries.length > 0 ? `
+            <div class="mt-2.5 flex flex-wrap gap-1.5 border-t border-stone-100 pt-2">
+              ${otherCustomEntries.map(entry => `
+                <button
+                  type="button"
+                  ${readOnly ? 'disabled' : `onclick="selectPresetCustomRange('${dateStr}', ${entry.startStep}, ${entry.endStep})"`}
+                  class="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition"
+                >
+                  <span>${entry.nickname}</span>
+                  <span class="font-mono text-[11px] text-brand-700">(${entry.label})</span>
+                </button>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      container.innerHTML = presetHtml + customHtml;
+    }
+
+    function applyCustomVoteForActor(dateStr, startStep, endStep) {
+      const actorId = currentActorId();
+      const s = Math.max(0, Math.min(47, Math.round(Number(startStep) || 0)));
+      const e = Math.max(s + 1, Math.min(48, Math.round(Number(endStep) || 1)));
+      state.customSlotDrafts = state.customSlotDrafts || {};
+      state.customSlotDrafts[dateStr] = { startStep: s, endStep: e };
+      const slotId = `CUSTOM:${stepToTimeStr(s)}-${stepToTimeStr(e)}`;
+
+      // Remove ALL_DAY and any previous CUSTOM slot for this actor on this date, then insert updated custom slot
+      state.event.votes = state.event.votes.filter(
+        v => !(v.date === dateStr && v.participantId === actorId && (v.slot === 'ALL_DAY' || isCustomSlot(v.slot)))
+      );
+      state.event.votes.push({ participantId: actorId, date: dateStr, slot: slotId });
+
+      if (actorId !== 'p_new_visitor') {
+        const nowTs = Date.now();
+        state.event.actorUpdatedAt = state.event.actorUpdatedAt || {};
+        state.event.actorUpdatedAt[actorId] = nowTs;
+        state.event.updatedAt = nowTs;
+      }
+      return { startStep: s, endStep: e, slotId };
+    }
+
+    function toggleCustomDateSlot(dateStr) {
+      if (isReadOnly()) {
+        showToast('目前為唯讀狀態（已額滿或已鎖定），無法勾選！');
+        return;
+      }
+      const actorId = currentActorId();
+      const draft = getCustomSlotDraft(dateStr, actorId);
+      if (draft.selected) {
+        state.event.votes = state.event.votes.filter(
+          v => !(v.date === dateStr && v.participantId === actorId && isCustomSlot(v.slot))
+        );
+        if (actorId !== 'p_new_visitor') {
+          const nowTs = Date.now();
+          state.event.actorUpdatedAt = state.event.actorUpdatedAt || {};
+          state.event.actorUpdatedAt[actorId] = nowTs;
+          state.event.updatedAt = nowTs;
+        }
+      } else {
+        applyCustomVoteForActor(dateStr, draft.startStep, draft.endStep);
+      }
+      renderSheetSlots();
+      renderRoom();
+    }
+
+    function handleCustomSliderInput(dateStr, thumbType, rawVal) {
+      if (isReadOnly()) return;
+      const startInput = document.getElementById('customStartRange');
+      const endInput = document.getElementById('customEndRange');
+      if (!startInput || !endInput) return;
+
+      let s = parseInt(startInput.value, 10) || 0;
+      let e = parseInt(endInput.value, 10) || 1;
+      if (thumbType === 'start') {
+        s = Math.min(s, e - 1);
+        startInput.value = s;
+      } else {
+        e = Math.max(e, s + 1);
+        endInput.value = e;
+      }
+
+      const applied = applyCustomVoteForActor(dateStr, s, e);
+      const startStr = stepToTimeStr(applied.startStep);
+      const endStr = stepToTimeStr(applied.endStep);
+      const durationStr = formatDurationSteps(applied.endStep - applied.startStep, state.lang);
+      const leftPct = (applied.startStep / 48) * 100;
+      const widthPct = ((applied.endStep - applied.startStep) / 48) * 100;
+
+      const fillEl = document.getElementById('customRangeFill');
+      if (fillEl) {
+        fillEl.style.left = `${leftPct}%`;
+        fillEl.style.width = `${widthPct}%`;
+        fillEl.className = 'absolute top-0 bottom-0 rounded-full bg-brand-600';
+      }
+      const startBadge = document.getElementById('customStartBadge');
+      if (startBadge) startBadge.textContent = startStr;
+      const endBadge = document.getElementById('customEndBadge');
+      if (endBadge) endBadge.textContent = endStr;
+      const durBadge = document.getElementById('customDurationBadge');
+      if (durBadge) durBadge.textContent = durationStr;
+      const subText = document.getElementById('customSlotSubText');
+      if (subText) subText.textContent = `${startStr} - ${endStr}（${durationStr}）`;
+      const checkCircle = document.getElementById('customSlotCheckCircle');
+      if (checkCircle) {
+        checkCircle.className = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-extrabold border-brand-600 bg-brand-600 text-white';
+        checkCircle.textContent = '✓';
+      }
+      const cardEl = document.getElementById('customSlotCard');
+      if (cardEl) {
+        cardEl.className = 'rounded-2xl border bg-white p-3.5 transition border-brand-500 ring-1 ring-brand-500';
+      }
+      const countBadge = document.getElementById('customSlotCountBadge');
+      if (countBadge) {
+        const cnt = getSlotAttendees(dateStr, applied.slotId).length;
+        countBadge.textContent = `👥 ${cnt} 人有空`;
+      }
+    }
+
+    function commitCustomSliderChange(dateStr) {
+      if (isReadOnly()) return;
+      renderSheetSlots();
+      renderRoom();
+    }
+
+    function selectPresetCustomRange(dateStr, startStep, endStep) {
+      if (isReadOnly()) return;
+      applyCustomVoteForActor(dateStr, startStep, endStep);
+      renderSheetSlots();
+      renderRoom();
     }
 
     function toggleDateSlot(dateStr, slotId) {
@@ -2754,7 +3208,7 @@
 
       const medals = ['🥇 1', '🥈 2', '🥉 3'];
       list.innerHTML = top.map((item, idx) => {
-        const slotObj = SLOTS.find(s => s.id === item.slot);
+        const slotText = formatSlotDisplayLabel(item.slot, state.lang, false);
         const names = item.ids
           .map(id => state.event.participants.find(p => p.id === id)?.nickname)
           .filter(Boolean);
@@ -2765,7 +3219,7 @@
                 <span class="inline-flex h-7 items-center rounded-full bg-peach-100 px-2.5 text-xs font-extrabold text-peach-700">${medals[idx]}</span>
                 <div>
                   <span class="font-extrabold text-ink text-sm">${item.date}</span>
-                  <span class="ml-1.5 text-xs font-semibold text-ink-soft">${slotObj ? slotObj.label[state.lang] : item.slot}</span>
+                  <span class="ml-1.5 text-xs font-semibold text-ink-soft">${slotText}</span>
                 </div>
               </div>
               <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">👥 ${item.count} 人有空</span>
@@ -3057,7 +3511,10 @@
       const top = computeTop3();
       const chosenDate = top[0]?.date || dateOffsetStr(3);
       const chosenSlot = top[0]?.slot || 'EVENING';
-      const slotLabel = SLOTS.find(s => s.id === chosenSlot)?.label[state.lang] || chosenSlot;
+      const slotLabel = formatSlotDisplayLabel(chosenSlot, state.lang, true);
+      const win = parseSlotTimeWindow(chosenSlot) || { startStr: '18:00', endStr: '22:00' };
+      const startHms = win.startStr.replace(':', '') + '00';
+      const endHms = (win.endStr === '24:00' ? '235900' : win.endStr.replace(':', '') + '00');
 
       let chosenLoc = '地點尚未確定';
       if (ev.locations.length === 1) {
@@ -3081,7 +3538,7 @@
       document.getElementById('finalLocText').textContent = chosenLoc;
 
       const compactDate = chosenDate.replace(/-/g, '');
-      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T180000/${compactDate}T220000&location=${encodeURIComponent(chosenLoc)}`;
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T${startHms}/${compactDate}T${endHms}&location=${encodeURIComponent(chosenLoc)}`;
       document.getElementById('gcalLink').href = gcalUrl;
 
       saveRoomToStorage(ev);
@@ -3094,14 +3551,17 @@
     function downloadIcsFile() {
       const ev = state.event;
       const d = (ev.finalDate || dateOffsetStr(3)).replace(/-/g, '');
+      const win = parseSlotTimeWindow(ev.finalSlot || 'EVENING') || { startStr: '18:00', endStr: '22:00' };
+      const startHms = win.startStr.replace(':', '') + '00';
+      const endHms = (win.endStr === '24:00' ? '235900' : win.endStr.replace(':', '') + '00');
       const icsContent = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
         'PRODID:-//Squad Up//Gathering//TW',
         'BEGIN:VEVENT',
         `UID:${ev.id}@squadup.app`,
-        `DTSTART:${d}T180000`,
-        `DTEND:${d}T220000`,
+        `DTSTART:${d}T${startHms}`,
+        `DTEND:${d}T${endHms}`,
         `SUMMARY:${ev.title}`,
         `LOCATION:${ev.finalLocation || 'TBD'}`,
         'STATUS:CONFIRMED',
@@ -3119,7 +3579,212 @@
       showToast('⬇️ 已下載 .ics 行事曆檔案！');
     }
 
-    // ==================== INLINE SHARE & PASSCODE MODAL ====================
+    // ==================== INLINE SHARE, QR CODE GENERATOR & PASSCODE MODAL ====================
+    // Built-in ISO/IEC 18004 QR Code matrix generator (Versions 1-6, Error Correction Level L, Byte mode) as zero-dependency offline fallback
+    function buildIsoQrMatrix(text) {
+      if (typeof window.qrcode === 'function') {
+        try {
+          const qr = window.qrcode(0, 'M');
+          qr.addData(text);
+          qr.make();
+          const count = qr.getModuleCount();
+          const mat = [];
+          for (let r = 0; r < count; r++) {
+            const row = [];
+            for (let c = 0; c < count; c++) row.push(qr.isDark(r, c));
+            mat.push(row);
+          }
+          return mat;
+        } catch (e) {}
+      }
+
+      const bytes = Array.from(new TextEncoder().encode(text));
+      const V_SPECS = [
+        null,
+        { v: 1, size: 21, total: 26, data: 19, ec: 7, align: [] },
+        { v: 2, size: 25, total: 44, data: 34, ec: 10, align: [6, 18] },
+        { v: 3, size: 29, total: 70, data: 55, ec: 15, align: [6, 22] },
+        { v: 4, size: 33, total: 100, data: 80, ec: 20, align: [6, 26] },
+        { v: 5, size: 37, total: 134, data: 108, ec: 26, align: [6, 30] }
+      ];
+      let spec = V_SPECS[5];
+      for (let v = 1; v <= 5; v++) {
+        if (bytes.length + 2 <= V_SPECS[v].data) { spec = V_SPECS[v]; break; }
+      }
+      const bits = [];
+      const pushBits = (val, len) => {
+        for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1);
+      };
+      pushBits(0b0100, 4);
+      pushBits(bytes.length, 8);
+      bytes.slice(0, spec.data - 2).forEach(b => pushBits(b, 8));
+      for (let i = 0; i < 4 && bits.length < spec.data * 8; i++) bits.push(0);
+      while (bits.length % 8 !== 0) bits.push(0);
+      const dataCw = [];
+      for (let i = 0; i < bits.length; i += 8) {
+        let b = 0;
+        for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+        dataCw.push(b);
+      }
+      const pads = [0xEC, 0x11];
+      let padIdx = 0;
+      while (dataCw.length < spec.data) dataCw.push(pads[padIdx++ % 2]);
+
+      const gfExp = new Uint8Array(512);
+      const gfLog = new Uint8Array(256);
+      let x = 1;
+      for (let i = 0; i < 255; i++) {
+        gfExp[i] = x;
+        gfLog[x] = i;
+        x <<= 1;
+        if (x & 0x100) x ^= 0x11D;
+      }
+      for (let i = 255; i < 512; i++) gfExp[i] = gfExp[i - 255];
+      const gfMul = (a, b) => (a === 0 || b === 0) ? 0 : gfExp[gfLog[a] + gfLog[b]];
+
+      let gen = [1];
+      for (let i = 0; i < spec.ec; i++) {
+        const next = new Array(gen.length + 1).fill(0);
+        for (let j = 0; j < gen.length; j++) {
+          next[j] ^= gen[j];
+          next[j + 1] ^= gfMul(gen[j], gfExp[i]);
+        }
+        gen = next;
+      }
+      const ecCw = new Array(spec.ec).fill(0);
+      for (let i = 0; i < dataCw.length; i++) {
+        const factor = dataCw[i] ^ ecCw.shift();
+        ecCw.push(0);
+        for (let j = 0; j < spec.ec; j++) {
+          ecCw[j] ^= gfMul(gen[j + 1], factor);
+        }
+      }
+      const allCw = dataCw.concat(ecCw);
+      const size = spec.size;
+      const mat = Array.from({ length: size }, () => new Array(size).fill(false));
+      const isFunc = Array.from({ length: size }, () => new Array(size).fill(false));
+
+      const setFinder = (r0, c0) => {
+        for (let dr = -1; dr <= 7; dr++) {
+          for (let dc = -1; dc <= 7; dc++) {
+            const r = r0 + dr, c = c0 + dc;
+            if (r < 0 || r >= size || c < 0 || c >= size) continue;
+            const dark = (dr >= 0 && dr <= 6 && (dc === 0 || dc === 6)) ||
+                         (dc >= 0 && dc <= 6 && (dr === 0 || dr === 6)) ||
+                         (dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4);
+            mat[r][c] = dark;
+            isFunc[r][c] = true;
+          }
+        }
+      };
+      setFinder(0, 0);
+      setFinder(0, size - 7);
+      setFinder(size - 7, 0);
+
+      for (let i = 8; i < size - 8; i++) {
+        mat[6][i] = mat[i][6] = (i % 2 === 0);
+        isFunc[6][i] = isFunc[i][6] = true;
+      }
+      if (spec.align.length > 0) {
+        const c0 = spec.align[1], r0 = spec.align[1];
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            mat[r0 + dr][c0 + dc] = Math.max(Math.abs(dr), Math.abs(dc)) !== 1;
+            isFunc[r0 + dr][c0 + dc] = true;
+          }
+        }
+      }
+      for (let i = 0; i < 9; i++) {
+        if (i < size) { isFunc[8][i] = true; isFunc[i][8] = true; }
+      }
+      for (let i = 0; i < 8; i++) {
+        isFunc[8][size - 1 - i] = true;
+        isFunc[size - 1 - i][8] = true;
+      }
+      mat[size - 8][8] = true;
+      isFunc[size - 8][8] = true;
+
+      let bitIdx = 0;
+      const totalBits = allCw.length * 8;
+      let up = true;
+      for (let right = size - 1; right >= 1; right -= 2) {
+        if (right === 6) right = 5;
+        for (let vert = 0; vert < size; vert++) {
+          const r = up ? (size - 1 - vert) : vert;
+          for (let j = 0; j < 2; j++) {
+            const c = right - j;
+            if (!isFunc[r][c]) {
+              let dark = false;
+              if (bitIdx < totalBits) {
+                dark = ((allCw[bitIdx >>> 3] >>> (7 - (bitIdx & 7))) & 1) === 1;
+                bitIdx++;
+              }
+              if ((r + c) % 2 === 0) dark = !dark; // Mask 0
+              mat[r][c] = dark;
+            }
+          }
+        }
+        up = !up;
+      }
+      // Format bits for Level L (01) + Mask 0 (000) -> 0x77C4
+      const fmt = 0x77C4;
+      for (let i = 0; i <= 5; i++) mat[8][i] = ((fmt >>> i) & 1) === 1;
+      mat[8][7] = ((fmt >>> 6) & 1) === 1;
+      mat[8][8] = ((fmt >>> 7) & 1) === 1;
+      mat[7][8] = ((fmt >>> 8) & 1) === 1;
+      for (let i = 9; i < 15; i++) mat[14 - i][8] = ((fmt >>> i) & 1) === 1;
+      for (let i = 0; i < 8; i++) mat[8][size - 1 - i] = ((fmt >>> i) & 1) === 1;
+      for (let i = 8; i < 15; i++) mat[size - 15 + i][8] = ((fmt >>> i) & 1) === 1;
+      return mat;
+    }
+
+    function renderShareQrCode(url) {
+      const canvas = document.getElementById('shareQrCanvas');
+      if (!canvas || !url) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const mat = buildIsoQrMatrix(url);
+      const count = mat.length;
+      const margin = 2;
+      const totalModules = count + margin * 2;
+      const size = 240;
+      canvas.width = size;
+      canvas.height = size;
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, size, size);
+
+      const cell = size / totalModules;
+      ctx.fillStyle = '#3E291E';
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (mat[r][c]) {
+            const x = Math.floor((c + margin) * cell);
+            const y = Math.floor((r + margin) * cell);
+            const w = Math.ceil((c + margin + 1) * cell) - x;
+            const h = Math.ceil((r + margin + 1) * cell) - y;
+            ctx.fillRect(x, y, w, h);
+          }
+        }
+      }
+    }
+
+    function downloadShareQrCode() {
+      const canvas = document.getElementById('shareQrCanvas');
+      if (!canvas || !state.event) return;
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `SquadUp_${state.event.id}_QRCode.png`;
+        a.click();
+        showToast('⬇️ 已下載邀請連結 QR Code 圖片！');
+      } catch (e) {
+        showToast('⚠️ 無法匯出 QR Code 圖片');
+      }
+    }
+
     function updateInlineShareInfo() {
       const ev = state.event;
       if (!ev) return;
@@ -3129,11 +3794,13 @@
       const codeEl = document.getElementById('shareRoomCode');
       if (codeEl) codeEl.textContent = ev.id;
 
+      renderShareQrCode(shareUrl);
+
       const ogTitleEl = document.getElementById('ogPreviewTitle');
       if (ogTitleEl) ogTitleEl.textContent = `${ev.title} | 揪一下 Squad Up`;
       const ogDescEl = document.getElementById('ogPreviewDesc');
       if (ogDescEl) {
-        ogDescEl.textContent = `主辦人：${ev.hostNickname} · 目前參加人數 ${ev.participants.length} / ${ev.maxParticipants} 人 · 點進來選你有空的時間！`;
+        ogDescEl.textContent = `主辦人：${ev.hostNickname} · 目前參加人數 ${ev.participants.length} / ${ev.maxParticipants} 人 · 掃描 QR Code 立即加入！`;
       }
     }
 
@@ -3426,7 +4093,14 @@
       ['主要生活圈','Primary living area','主な活動エリア'],
       ['未來將用於推送生活圈附近的揪團活動','Used in the future to recommend nearby gatherings','今後エリア周辺の募集通知に活用されます'],
       ['💾 儲存個人資料設定','💾 Save profile settings','💾 プロフィールを保存'],
-      ['⚙️ 個人資料與選單','⚙️ Profile & menu','⚙️ プロフィール・メニュー']
+      ['⚙️ 個人資料與選單','⚙️ Profile & menu','⚙️ プロフィール・メニュー'],
+      ['邀請連結 QR Code','Invite Link QR Code','招待リンク QRコード'],
+      ['掃描 QR Code 即可直接進入房間選時間！','Scan the QR code to open the room and pick your times!','QRコードを読み取ってすぐ日程を選択できます！'],
+      ['下載 QR Code','Download QR Code','QRコードを保存'],
+      ['自訂自由時段','Custom Time Range','自由な時間帯を指定'],
+      ['左右滑動設定你有空的起訖時間（每格 30 分鐘）','Drag the sliders to set your free time (30-min steps)','スライダーを動かして空き時間を指定（30分単位）'],
+      ['開始時間','Start','開始'],
+      ['結束時間','End','終了']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
