@@ -318,6 +318,25 @@
           </div>
         </div>
 
+        <!-- Event Notes (Optional, max 500 chars) -->
+        <div class="rounded-3xl bg-white p-4 shadow-soft space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <label for="createNotes" class="block font-bold text-ink">活動備註（選填）</label>
+              <p class="text-xs text-ink-mute">可填寫聚會說明、預算、集合細節或注意事項（限 500 字以內）</p>
+            </div>
+            <span id="createNotesCount" class="shrink-0 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-bold text-ink-mute">0 / 500</span>
+          </div>
+          <textarea
+            id="createNotes"
+            rows="3"
+            maxlength="500"
+            oninput="updateCreateNotesCount()"
+            placeholder="例如：每人預算約 500 元、請自備交換禮物、遲到的人要請喝飲料..."
+            class="w-full rounded-2xl border border-stone-200 p-3.5 text-sm leading-relaxed text-ink focus:border-brand-500 focus:outline-none resize-y"
+          ></textarea>
+        </div>
+
         <!-- Candidate Locations -->
         <div class="rounded-3xl bg-white p-4 shadow-soft space-y-3">
           <div class="flex items-center justify-between">
@@ -451,7 +470,58 @@
               </span>
             </div>
             <h1 id="roomTitle" class="text-xl font-extrabold text-ink break-words">--</h1>
-            <p class="mt-1 text-sm text-ink-soft">主辦人：<span id="roomHost" class="font-semibold text-ink">--</span></p>
+            <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-sm text-ink-soft">主辦人：<span id="roomHost" class="font-semibold text-ink">--</span></p>
+              <button
+                id="editRoomNotesBtn"
+                type="button"
+                onclick="openRoomNotesEditor()"
+                class="hidden inline-flex items-center gap-1 rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-extrabold text-brand-700 hover:bg-brand-100 active:scale-95 transition"
+              >
+                <span>✏️</span>
+                <span>修改活動備註</span>
+              </button>
+            </div>
+            <div id="roomNotesBox" class="hidden mt-3 rounded-2xl border border-brand-100 bg-brand-50/60 p-3.5 space-y-1">
+              <div class="flex items-center gap-1.5 text-xs font-extrabold text-brand-700">
+                <span>📝</span>
+                <span>活動備註</span>
+              </div>
+              <p id="roomNotesText" class="text-sm leading-relaxed text-ink whitespace-pre-wrap break-words"></p>
+            </div>
+            <div id="roomNotesEditor" class="hidden mt-3 rounded-2xl border border-brand-200 bg-brand-50/40 p-3.5 space-y-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <label for="roomNotesInput" class="flex items-center gap-1.5 text-xs font-extrabold text-brand-700">
+                  <span>📝</span>
+                  <span>編輯活動備註（選填，限 500 字以內）</span>
+                </label>
+                <span id="roomNotesEditCount" class="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-bold text-ink-mute shadow-sm">0 / 500</span>
+              </div>
+              <textarea
+                id="roomNotesInput"
+                rows="3"
+                maxlength="500"
+                oninput="updateRoomNotesEditCount()"
+                placeholder="例如：每人預算約 500 元、請自備交換禮物、遲到的人要請喝飲料..."
+                class="w-full rounded-xl border border-stone-200 bg-white p-3 text-sm leading-relaxed text-ink focus:border-brand-500 focus:outline-none resize-y"
+              ></textarea>
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onclick="closeRoomNotesEditor()"
+                  class="h-9 rounded-xl border border-stone-200 bg-white px-3.5 text-xs font-bold text-ink-soft hover:bg-stone-50 active:scale-95 transition"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onclick="saveRoomNotes()"
+                  class="h-9 rounded-xl bg-brand-600 px-4 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition"
+                >
+                  儲存備註
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Inline Share Link & Room Code Section -->
@@ -861,6 +931,7 @@
           id: room.id,
           t: room.title,
           h: room.hostNickname,
+          nt: room.notes || '',
           m: room.maxParticipants,
           e: room.expiryDays,
           p: room.passcode || '',
@@ -900,6 +971,7 @@
           id: compact.id,
           title: compact.t,
           hostNickname: compact.h,
+          notes: compact.nt || '',
           maxParticipants: Number(compact.m) || 20,
           expiryDays: Number(compact.e) || 7,
           passcode: compact.p || '',
@@ -1014,6 +1086,7 @@
         id: primary.id,
         title: primary.title,
         hostNickname: mergedParticipants.find(p => p.isHost || p.id === 'p_host')?.nickname || primary.hostNickname,
+        notes: primary.notes !== undefined ? primary.notes : (roomA.notes || roomB.notes || ''),
         maxParticipants: Number(primary.maxParticipants) || 20,
         expiryDays: Number(primary.expiryDays) || 7,
         passcode: primary.passcode || '',
@@ -2217,6 +2290,17 @@
       createLocationsDraft[idx][key] = val;
     }
 
+    function updateCreateNotesCount() {
+      const el = document.getElementById('createNotes');
+      const countEl = document.getElementById('createNotesCount');
+      if (!el || !countEl) return;
+      if (el.value.length > 500) {
+        el.value = el.value.slice(0, 500);
+      }
+      const len = el.value.length;
+      countEl.textContent = `${len} / 500`;
+    }
+
     function adjustCap(delta) {
       const input = document.getElementById('createCap');
       const next = Math.min(20, Math.max(1, (parseInt(input.value, 10) || 20) + delta));
@@ -2252,6 +2336,7 @@
 
       const title = document.getElementById('createTitle').value.trim() || '未命名揪團';
       const host = document.getElementById('createHost').value.trim() || '主辦人';
+      const notes = (document.getElementById('createNotes')?.value || '').trim().slice(0, 500);
       const passcode = document.getElementById('createPasscode').value.trim();
 
       const newRoomId = generateRoomCode();
@@ -2267,6 +2352,7 @@
         id: newRoomId,
         title: title,
         hostNickname: host,
+        notes: notes,
         maxParticipants: capVal,
         expiryDays: expiryDays,
         passcode: passcode,
@@ -2561,6 +2647,63 @@
       return picked;
     }
 
+    function openRoomNotesEditor() {
+      const ev = state.event;
+      if (!ev || !isRoomHostViewer(ev)) {
+        showToast('⚠️ 僅主辦人可修改活動備註！');
+        return;
+      }
+      state.isEditingRoomNotes = true;
+      state.editingRoomNotesId = ev.id;
+      const inputEl = document.getElementById('roomNotesInput');
+      if (inputEl) {
+        inputEl.value = (ev.notes || '').slice(0, 500);
+      }
+      updateRoomNotesEditCount();
+      renderRoom();
+      if (inputEl) {
+        inputEl.focus();
+      }
+    }
+
+    function closeRoomNotesEditor() {
+      state.isEditingRoomNotes = false;
+      state.editingRoomNotesId = null;
+      renderRoom();
+    }
+
+    function updateRoomNotesEditCount() {
+      const el = document.getElementById('roomNotesInput');
+      const countEl = document.getElementById('roomNotesEditCount');
+      if (!el || !countEl) return;
+      if (el.value.length > 500) {
+        el.value = el.value.slice(0, 500);
+      }
+      countEl.textContent = `${el.value.length} / 500`;
+    }
+
+    function saveRoomNotes() {
+      const ev = state.event;
+      if (!ev || !isRoomHostViewer(ev)) {
+        showToast('⚠️ 僅主辦人可修改活動備註！');
+        return;
+      }
+      const inputEl = document.getElementById('roomNotesInput');
+      const nextNotes = (inputEl?.value || '').trim().slice(0, 500);
+      const nowTs = Date.now();
+      ev.notes = nextNotes;
+      ev.updatedAt = nowTs;
+      ev.actorUpdatedAt = ev.actorUpdatedAt || {};
+      ev.actorUpdatedAt.p_host = nowTs;
+      state.isEditingRoomNotes = false;
+      state.editingRoomNotesId = null;
+
+      saveRoomToStorage(ev);
+      updateUrlHash(ev);
+      renderRoom();
+      showToast(nextNotes ? '✅ 已更新活動備註並同步至房間！' : '✅ 已清空活動備註！');
+    }
+
     function renderRoom() {
       const emptyEl = document.getElementById('roomEmptyState');
       const activeEl = document.getElementById('roomActiveContent');
@@ -2592,6 +2735,31 @@
       const recentTitleEl = document.getElementById('recentRoomTitle');
       if (recentTitleEl) recentTitleEl.textContent = ev.title;
       document.getElementById('roomHost').textContent = ev.hostNickname;
+      const roomNotesBox = document.getElementById('roomNotesBox');
+      const roomNotesText = document.getElementById('roomNotesText');
+      const editRoomNotesBtn = document.getElementById('editRoomNotesBtn');
+      const roomNotesEditor = document.getElementById('roomNotesEditor');
+      const isHostViewer = isRoomHostViewer(ev);
+      if (!isHostViewer || state.editingRoomNotesId !== ev.id) {
+        state.isEditingRoomNotes = false;
+        state.editingRoomNotesId = null;
+      }
+      if (editRoomNotesBtn) {
+        editRoomNotesBtn.classList.toggle('hidden', !isHostViewer || Boolean(state.isEditingRoomNotes));
+      }
+      if (roomNotesEditor) {
+        roomNotesEditor.classList.toggle('hidden', !isHostViewer || !state.isEditingRoomNotes);
+      }
+      const cleanNotes = (ev.notes || '').trim();
+      if (roomNotesBox && roomNotesText) {
+        if (cleanNotes && !state.isEditingRoomNotes) {
+          roomNotesText.textContent = cleanNotes;
+          roomNotesBox.classList.remove('hidden');
+        } else {
+          roomNotesText.textContent = '';
+          roomNotesBox.classList.add('hidden');
+        }
+      }
       const homeLiveCountEl = document.getElementById('homeLiveCount');
       if (homeLiveCountEl) homeLiveCountEl.textContent = `${count} / ${max}`;
       const dashCountEl = document.getElementById('dashCount');
@@ -3243,7 +3411,7 @@
         container.innerHTML = `
           <div class="flex items-center gap-2.5 rounded-2xl bg-peach-50 p-4">
             <span class="rounded-full bg-peach-200 px-2.5 py-0.5 text-xs font-extrabold text-peach-700">TBD</span>
-            <span class="text-sm font-bold text-peach-700">地點尚未確定（Location to be decided）</span>
+            <span class="text-sm font-bold text-peach-700">地點尚未確定</span>
           </div>
         `;
         return;
@@ -4073,7 +4241,7 @@
       ['分享連結','Share link','リンクを共有'],['關閉視窗','Close window','ウィンドウを閉じる'],
       ['請輸入房間參加密碼','Enter the room password','ルームのパスワードを入力'],['此揪團受密碼保護，請輸入主辦人設定的密碼：','This gathering is protected. Enter the password set by the host:','この募集にはパスワードが必要です。幹事が設定したパスワードを入力：'],
       ['密碼錯誤，請再試一次！','Incorrect password. Try again.','パスワードが違います。もう一度お試しください。'],['解鎖進入房間','Unlock room','ルームに入る'],
-      ['🗺️ 開啟地圖','🗺️ Open map','🗺️ 地図を開く'],['地點尚未確定（Location to be decided）','Place to be decided','場所は未定です'],
+      ['🗺️ 開啟地圖','🗺️ Open map','🗺️ 地図を開く'],['地點尚未確定','Place to be decided','場所は未定です'],
       ['目前尚無 2 人以上重疊的時段，多勾選幾個日期吧！','No time is shared by two or more people yet. Select more dates.','2人以上が参加できる時間帯はまだありません。日付を追加してください。'],
       ['更新我的回覆','Update my response','回答を更新'],['Google 登入','Sign in with Google','Googleでログイン'],['登出帳號','Sign out','ログアウト'],
       ['目前未設定地點（前台將顯示「地點尚未確定」）。點擊下方按鈕新增候選地點。','No place set yet. Add a suggested place below.','場所は未設定です。下のボタンで候補を追加してください。'],
@@ -4117,7 +4285,15 @@
       ['左右滑動設定你有空的起訖時間（每格 30 分鐘）','Drag the sliders to set your free time (30-min steps)','スライダーを動かして空き時間を指定（30分単位）'],
       ['開始時間','Start','開始'],
       ['結束時間','End','終了'],
-      ['輸入候選地點名稱或地址','Enter place name or address','候補の場所名または住所を入力']
+      ['輸入候選地點名稱或地址','Enter place name or address','候補の場所名または住所を入力'],
+      ['活動備註（選填）','Event notes (optional)','イベント備考（任意）'],
+      ['可填寫聚會說明、預算、集合細節或注意事項（限 500 字以內）','Add gathering details, budget, meeting info, or notes (up to 500 characters)','集まりの説明、予算、集合場所の詳細や注意事項などを入力できます（500文字以内）'],
+      ['例如：每人預算約 500 元、請自備交換禮物、遲到的人要請喝飲料...','e.g., Budget ~$20 per person, bring a gift for exchange...','例：予算は1人2000円程度、プレゼント交換あり、遅刻したらドリンク奢り...'],
+      ['活動備註','Event notes','イベント備考'],
+      ['修改活動備註','Edit event notes','イベント備考を編集'],
+      ['編輯活動備註（選填，限 500 字以內）','Edit event notes (optional, up to 500 characters)','イベント備考を編集（任意・500文字以内）'],
+      ['儲存備註','Save notes','備考を保存'],
+      ['取消','Cancel','キャンセル']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
@@ -4155,6 +4331,7 @@
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         while (walker.nextNode()) {
           const node = walker.currentNode;
+          if (node.parentElement && node.parentElement.id === 'roomNotesText') continue;
           const raw = node.nodeValue;
           const trimmed = raw.trim();
           if (!trimmed) continue;
