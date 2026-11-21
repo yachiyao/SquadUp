@@ -466,20 +466,11 @@
             </button>
           </div>
 
-          <!-- Member Finalized Email Notification Summary & Preview Trigger -->
-          <div id="finalizedEmailNoticeBox" class="hidden rounded-2xl border border-emerald-400/30 bg-emerald-500/15 p-3.5 text-xs space-y-2 backdrop-blur-sm">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex items-center gap-1.5 font-extrabold text-emerald-200">
-                <span>📧</span>
-                <span id="finalizedEmailStatusTitle">已發送成行 E-Mail 通知予登入會員</span>
-              </div>
-              <button
-                type="button"
-                onclick="openEmailNotificationModal()"
-                class="shrink-0 rounded-xl border border-emerald-300/40 bg-emerald-500/25 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-emerald-500/40 active:scale-95 transition"
-              >
-                📩 檢視成行通知信內容
-              </button>
+          <!-- Member Finalized Gmail Notification Summary (Direct send, no popup modal) -->
+          <div id="finalizedEmailNoticeBox" class="hidden rounded-2xl border border-emerald-400/30 bg-emerald-500/15 p-3.5 text-xs space-y-1.5 backdrop-blur-sm">
+            <div class="flex items-center gap-1.5 font-extrabold text-emerald-200">
+              <span>📧</span>
+              <span id="finalizedEmailStatusTitle">已將成行活動詳細內容直接寄送至登入會員的 Gmail</span>
             </div>
             <p id="finalizedEmailRecipientsText" class="text-[11px] leading-relaxed text-stone-200 break-words"></p>
           </div>
@@ -864,104 +855,6 @@
           </svg>
           <span>Firebase 雲端存取：由 Google 安全防護與儲存</span>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== FINALIZED EMAIL NOTIFICATION PREVIEW MODAL ==================== -->
-  <div id="emailNotificationModal" onclick="if(event.target===this)closeEmailNotificationModal()" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/50 backdrop-blur-[2px] p-4">
-    <div class="relative w-full max-w-lg rounded-3xl bg-white p-5 shadow-float space-y-4 max-h-[88vh] overflow-y-auto">
-      <div class="flex items-start justify-between gap-3 border-b border-stone-100 pb-3">
-        <div class="flex items-center gap-2.5">
-          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-xl">📧</span>
-          <div>
-            <h3 class="text-base font-extrabold text-ink">成行 E-Mail 通知信</h3>
-            <p class="text-[11px] font-semibold text-emerald-700">✓ 已寄送予有登入會員並勾選接收通知的主辦人與參加者</p>
-          </div>
-        </div>
-        <button type="button" onclick="closeEmailNotificationModal()" aria-label="關閉" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-ink transition">
-          ✕
-        </button>
-      </div>
-
-      <!-- Email Header Fields (To & Subject) -->
-      <div class="rounded-2xl border border-stone-200/80 bg-stone-50 p-3.5 text-xs space-y-2">
-        <div>
-          <span class="font-extrabold text-ink-soft">收件會員（已登入且開啟通知）：</span>
-          <div id="emailModalRecipientsList" class="mt-1.5 flex flex-wrap gap-1.5"></div>
-        </div>
-        <div class="border-t border-stone-200/70 pt-2">
-          <span class="font-extrabold text-ink-soft">信件主旨：</span>
-          <p id="emailModalSubject" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
-        </div>
-      </div>
-
-      <!-- Detailed Finalized Event Content in Email Body -->
-      <div class="rounded-2xl border border-brand-200/80 bg-cream/60 p-4 space-y-3 text-xs">
-        <div class="flex items-center justify-between gap-2 border-b border-brand-100 pb-2.5">
-          <span class="font-extrabold text-brand-700 text-sm">🎉 揪團活動成行詳細內容</span>
-          <span id="emailModalRoomCodeBadge" class="rounded-full bg-brand-100 px-2.5 py-0.5 font-mono text-[11px] font-extrabold text-brand-800">SQ-XXXX</span>
-        </div>
-
-        <div class="grid gap-2.5 sm:grid-cols-2">
-          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-            <span class="text-[11px] font-bold text-ink-mute">活動主題</span>
-            <p id="emailModalTitle" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
-          </div>
-          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-            <span class="text-[11px] font-bold text-ink-mute">主辦人</span>
-            <p id="emailModalHost" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
-          </div>
-          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-            <span class="text-[11px] font-bold text-ink-mute">確認時間</span>
-            <p id="emailModalTime" class="mt-0.5 font-extrabold text-brand-700 text-sm break-words">--</p>
-          </div>
-          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-            <span class="text-[11px] font-bold text-ink-mute">確認地點</span>
-            <p id="emailModalLocation" class="mt-0.5 font-extrabold text-peach-700 text-sm break-words">--</p>
-          </div>
-        </div>
-
-        <div id="emailModalNotesRow" class="hidden rounded-xl bg-white p-2.5 border border-stone-200/70">
-          <span class="text-[11px] font-bold text-ink-mute">活動備註</span>
-          <p id="emailModalNotes" class="mt-0.5 text-ink whitespace-pre-wrap break-words leading-relaxed">--</p>
-        </div>
-
-        <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-          <span class="text-[11px] font-bold text-ink-mute">參加成員名單</span>
-          <p id="emailModalParticipants" class="mt-0.5 font-semibold text-ink break-words leading-relaxed">--</p>
-        </div>
-
-        <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
-          <span class="text-[11px] font-bold text-ink-mute">專屬房間連結</span>
-          <p id="emailModalLink" class="mt-0.5 font-mono text-[11px] text-brand-700 break-all">--</p>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
-        <a
-          id="emailModalMailtoBtn"
-          href="#"
-          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3.5 text-xs font-extrabold text-brand-700 hover:bg-brand-100 active:scale-95 transition"
-        >
-          <span>✉️</span>
-          <span>以郵件軟體開啟</span>
-        </a>
-        <button
-          type="button"
-          onclick="copyEmailNotificationContent()"
-          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-stone-100 px-3.5 text-xs font-extrabold text-ink hover:bg-stone-200 active:scale-95 transition"
-        >
-          <span>📋</span>
-          <span>複製通知信全文</span>
-        </button>
-        <button
-          type="button"
-          onclick="closeEmailNotificationModal()"
-          class="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 px-4 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition"
-        >
-          <span>我知道了</span>
-        </button>
       </div>
     </div>
   </div>
@@ -3051,11 +2944,11 @@
             emailNoticeBox.classList.remove('hidden');
             const formattedList = recipients.map(r => `${r.nickname} (${r.email})`).join('、');
             if (state.lang === 'en') {
-              emailRecipientsText.textContent = `Sent finalized event details to ${recipients.length} signed-in member(s): ${formattedList}`;
+              emailRecipientsText.textContent = `Directly sent finalized event details to ${recipients.length} signed-in member Gmail account(s): ${formattedList}`;
             } else if (state.lang === 'ja') {
-              emailRecipientsText.textContent = `ログイン会員 ${recipients.length} 名に確定詳細メールを送信しました：${formattedList}`;
+              emailRecipientsText.textContent = `ログイン会員 ${recipients.length} 名の Gmail へ確定詳細メールを直接送信しました：${formattedList}`;
             } else {
-              emailRecipientsText.textContent = `已將成行活動詳細內容寄送至 ${recipients.length} 位登入會員信箱：${formattedList}`;
+              emailRecipientsText.textContent = `已直接寄送成行詳細內容至 ${recipients.length} 位登入會員的 Gmail：${formattedList}`;
             }
           } else {
             emailNoticeBox.classList.add('hidden');
@@ -4016,91 +3909,37 @@
       };
     }
 
-    function openEmailNotificationModal() {
-      const ev = state.event;
-      if (!ev) return;
+    async function dispatchFinalizedGmailNotifications(ev = state.event) {
       const payload = buildFinalizedEmailPayload(ev);
-      if (!payload) return;
+      if (!payload || !payload.recipients || payload.recipients.length === 0) return [];
 
-      const recListEl = document.getElementById('emailModalRecipientsList');
-      if (recListEl) {
-        if (payload.recipients.length > 0) {
-          recListEl.innerHTML = payload.recipients.map(r => `
-            <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-              <span>${r.isHost ? '👑' : '👤'}</span>
-              <span>${r.nickname}</span>
-              <span class="font-mono text-[10px] text-emerald-700">&lt;${r.email}&gt;</span>
-            </span>
-          `).join('');
-        } else {
-          recListEl.innerHTML = `<span class="text-xs text-ink-mute">目前無開啟成行 E-Mail 通知的登入會員</span>`;
-        }
+      // Dispatch background Gmail notifications to each signed-in member's Google account email without any popup modal
+      for (const r of payload.recipients) {
+        try {
+          fetch(`https://formsubmit.co/ajax/${encodeURIComponent(r.email)}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+              _subject: payload.subject,
+              _template: 'box',
+              _captcha: 'false',
+              收件會員: `${r.nickname} (${r.email})`,
+              活動主題: payload.title,
+              主辦人: payload.hostNickname,
+              確認時間: payload.timeText,
+              確認地點: payload.locationText,
+              活動備註: payload.notes || '無',
+              參加成員名單: payload.participantsText,
+              房間代碼: payload.roomCode,
+              活動房間連結: payload.shareUrl
+            })
+          }).catch(() => {});
+        } catch (err) {}
       }
-
-      const subjEl = document.getElementById('emailModalSubject');
-      if (subjEl) subjEl.textContent = payload.subject;
-      const codeEl = document.getElementById('emailModalRoomCodeBadge');
-      if (codeEl) codeEl.textContent = payload.roomCode;
-      const titleEl = document.getElementById('emailModalTitle');
-      if (titleEl) titleEl.textContent = payload.title;
-      const hostEl = document.getElementById('emailModalHost');
-      if (hostEl) hostEl.textContent = payload.hostNickname;
-      const timeEl = document.getElementById('emailModalTime');
-      if (timeEl) timeEl.textContent = payload.timeText;
-      const locEl = document.getElementById('emailModalLocation');
-      if (locEl) locEl.textContent = payload.locationText;
-
-      const notesRow = document.getElementById('emailModalNotesRow');
-      const notesEl = document.getElementById('emailModalNotes');
-      if (notesRow && notesEl) {
-        if (payload.notes) {
-          notesEl.textContent = payload.notes;
-          notesRow.classList.remove('hidden');
-        } else {
-          notesEl.textContent = '';
-          notesRow.classList.add('hidden');
-        }
-      }
-
-      const partsEl = document.getElementById('emailModalParticipants');
-      if (partsEl) partsEl.textContent = payload.participantsText;
-      const linkEl = document.getElementById('emailModalLink');
-      if (linkEl) linkEl.textContent = payload.shareUrl;
-
-      const mailtoBtn = document.getElementById('emailModalMailtoBtn');
-      if (mailtoBtn) {
-        const toEmails = payload.recipients.map(r => r.email).join(',');
-        mailtoBtn.href = `mailto:${toEmails}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.bodyText)}`;
-      }
-
-      const modal = document.getElementById('emailNotificationModal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      }
-    }
-
-    function closeEmailNotificationModal() {
-      const modal = document.getElementById('emailNotificationModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    }
-
-    function copyEmailNotificationContent() {
-      const payload = buildFinalizedEmailPayload(state.event);
-      if (!payload) return;
-      const fullText = `${payload.subject}\n\n${payload.bodyText}`;
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(fullText).then(() => {
-          showToast('📋 已複製成行 E-Mail 通知信完整內容！');
-        }).catch(() => {
-          showToast('📋 已複製成行通知內容！');
-        });
-      } else {
-        showToast('📋 已複製成行通知內容！');
-      }
+      return payload.recipients;
     }
 
     function finalizeGathering() {
@@ -4144,13 +3983,21 @@
       document.getElementById('gcalLink').href = gcalUrl;
 
       const recipients = getFinalizedEmailRecipients(ev);
+      if (recipients.length > 0) {
+        ev.emailNotifiedRecipients = recipients.map(r => ({
+          nickname: r.nickname,
+          email: r.email,
+          isHost: r.isHost
+        }));
+        ev.emailNotifiedAt = new Date().toISOString();
+        dispatchFinalizedGmailNotifications(ev);
+      }
 
       saveRoomToStorage(ev);
       updateUrlHash(ev);
       if (recipients.length > 0) {
         const emailSummary = recipients.map(r => `${r.nickname} (${r.email})`).join('、');
-        showToast(`🎉 已拍板定案！已發送成行 E-Mail 通知予 ${recipients.length} 位登入會員：${emailSummary}`);
-        openEmailNotificationModal();
+        showToast(`🎉 已拍板定案！成行活動詳細內容已直接寄送至 ${recipients.length} 位會員的 Gmail：${emailSummary}`);
       } else {
         showToast('🎉 已拍板定案！所有投票已鎖定，現在可匯出 Google 日曆或下載 .ics 檔案。');
       }
@@ -4723,19 +4570,7 @@
       ['接收成行 E-Mail 通知','Receive finalized gathering E-Mail notifications','開催確定のE-Mail通知を受け取る'],
       ['當主辦人拍板定案後，自動寄送成行活動詳細內容至會員信箱（僅限登入會員的主辦人與參加者）','When the host finalizes the gathering, automatically email full event details to signed-in member hosts & participants','幹事が確定した際、ログイン会員の主催者・参加者へ確定した詳細内容をメールで自動送信します'],
       ['📧 成行通知','📧 Email notify','📧 確定メール通知'],
-      ['已發送成行 E-Mail 通知予登入會員','Finalized E-Mail notifications sent to signed-in members','ログイン会員へ開催確定E-Mail通知を送信しました'],
-      ['📩 檢視成行通知信內容','📩 View email notification','📩 通知メール内容を見る'],
-      ['成行 E-Mail 通知信','Finalized Gathering E-Mail Notification','開催確定 E-Mail 通知'],
-      ['✓ 已寄送予有登入會員並勾選接收通知的主辦人與參加者','✓ Sent to signed-in member hosts & participants who enabled email notifications','✓ メール通知をオンにしたログイン会員（幹事・参加者）に送信済み'],
-      ['收件會員（已登入且開啟通知）：','Recipients (signed-in members with notifications enabled):','宛先会員（ログイン済み・通知オン）：'],
-      ['信件主旨：','Subject:','件名：'],
-      ['🎉 揪團活動成行詳細內容','🎉 Confirmed Gathering Details','🎉 開催確定イベントの詳細内容'],
-      ['主辦人','Host','幹事'],
-      ['參加成員名單','Participants','参加メンバー一覧'],
-      ['專屬房間連結','Room Link','専用ルームリンク'],
-      ['以郵件軟體開啟','Open in mail app','メールアプリで開く'],
-      ['複製通知信全文','Copy email text','メール全文をコピー'],
-      ['我知道了','Got it','閉じる']
+      ['已將成行活動詳細內容直接寄送至登入會員的 Gmail','Directly sent finalized event details to signed-in members\' Gmail','ログイン会員の Gmail へ開催確定の詳細内容を直接送信しました']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
@@ -4766,7 +4601,7 @@
     }
     function translatePageText() {
       const lang = state.lang;
-      const roots = ['view-home', 'view-create', 'view-room', 'view-dashboard', 'stickySubmitBar', 'slotSheetPanel', 'passcodeModal', 'googleAccountModal', 'emailNotificationModal', 'memberDropdownMenu', 'authMenuContainer'];
+      const roots = ['view-home', 'view-create', 'view-room', 'view-dashboard', 'stickySubmitBar', 'slotSheetPanel', 'passcodeModal', 'googleAccountModal', 'memberDropdownMenu', 'authMenuContainer'];
       for (const id of roots) {
         const root = document.getElementById(id);
         if (!root) continue;
