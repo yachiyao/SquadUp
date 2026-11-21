@@ -216,6 +216,21 @@
                 <p class="mt-1 text-[11px] text-ink-mute">未來將用於推送生活圈附近的揪團活動</p>
               </div>
 
+              <div class="rounded-2xl border border-stone-200/90 bg-stone-50/70 p-3">
+                <label for="profileEmailNotifyCheckbox" class="flex cursor-pointer items-start gap-2.5 select-none">
+                  <input
+                    id="profileEmailNotifyCheckbox"
+                    type="checkbox"
+                    checked
+                    class="mt-0.5 h-4 w-4 shrink-0 rounded border-stone-300 accent-[#795238] focus:ring-brand-500 cursor-pointer"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <span class="block text-xs font-extrabold text-ink">接收成行 E-Mail 通知</span>
+                    <span class="mt-0.5 block text-[11px] leading-relaxed text-ink-mute">當主辦人拍板定案後，自動寄送成行活動詳細內容至會員信箱（僅限登入會員的主辦人與參加者）</span>
+                  </div>
+                </label>
+              </div>
+
               <button type="button" onclick="saveMemberProfile()" class="flex h-10 w-full items-center justify-center rounded-xl bg-brand-600 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition">
                 💾 儲存個人資料設定
               </button>
@@ -449,6 +464,24 @@
             <button onclick="downloadIcsFile()" class="flex h-11 items-center justify-center gap-1.5 rounded-2xl border border-white/20 bg-white/15 text-sm font-extrabold text-white hover:bg-white/25 active:scale-95 transition">
               ⬇️ 下載 .ics 行事曆檔
             </button>
+          </div>
+
+          <!-- Member Finalized Email Notification Summary & Preview Trigger -->
+          <div id="finalizedEmailNoticeBox" class="hidden rounded-2xl border border-emerald-400/30 bg-emerald-500/15 p-3.5 text-xs space-y-2 backdrop-blur-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 font-extrabold text-emerald-200">
+                <span>📧</span>
+                <span id="finalizedEmailStatusTitle">已發送成行 E-Mail 通知予登入會員</span>
+              </div>
+              <button
+                type="button"
+                onclick="openEmailNotificationModal()"
+                class="shrink-0 rounded-xl border border-emerald-300/40 bg-emerald-500/25 px-2.5 py-1 text-[11px] font-extrabold text-white hover:bg-emerald-500/40 active:scale-95 transition"
+              >
+                📩 檢視成行通知信內容
+              </button>
+            </div>
+            <p id="finalizedEmailRecipientsText" class="text-[11px] leading-relaxed text-stone-200 break-words"></p>
           </div>
         </div>
 
@@ -835,6 +868,104 @@
     </div>
   </div>
 
+  <!-- ==================== FINALIZED EMAIL NOTIFICATION PREVIEW MODAL ==================== -->
+  <div id="emailNotificationModal" onclick="if(event.target===this)closeEmailNotificationModal()" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/50 backdrop-blur-[2px] p-4">
+    <div class="relative w-full max-w-lg rounded-3xl bg-white p-5 shadow-float space-y-4 max-h-[88vh] overflow-y-auto">
+      <div class="flex items-start justify-between gap-3 border-b border-stone-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-xl">📧</span>
+          <div>
+            <h3 class="text-base font-extrabold text-ink">成行 E-Mail 通知信</h3>
+            <p class="text-[11px] font-semibold text-emerald-700">✓ 已寄送予有登入會員並勾選接收通知的主辦人與參加者</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeEmailNotificationModal()" aria-label="關閉" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-ink transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Email Header Fields (To & Subject) -->
+      <div class="rounded-2xl border border-stone-200/80 bg-stone-50 p-3.5 text-xs space-y-2">
+        <div>
+          <span class="font-extrabold text-ink-soft">收件會員（已登入且開啟通知）：</span>
+          <div id="emailModalRecipientsList" class="mt-1.5 flex flex-wrap gap-1.5"></div>
+        </div>
+        <div class="border-t border-stone-200/70 pt-2">
+          <span class="font-extrabold text-ink-soft">信件主旨：</span>
+          <p id="emailModalSubject" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
+        </div>
+      </div>
+
+      <!-- Detailed Finalized Event Content in Email Body -->
+      <div class="rounded-2xl border border-brand-200/80 bg-cream/60 p-4 space-y-3 text-xs">
+        <div class="flex items-center justify-between gap-2 border-b border-brand-100 pb-2.5">
+          <span class="font-extrabold text-brand-700 text-sm">🎉 揪團活動成行詳細內容</span>
+          <span id="emailModalRoomCodeBadge" class="rounded-full bg-brand-100 px-2.5 py-0.5 font-mono text-[11px] font-extrabold text-brand-800">SQ-XXXX</span>
+        </div>
+
+        <div class="grid gap-2.5 sm:grid-cols-2">
+          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+            <span class="text-[11px] font-bold text-ink-mute">活動主題</span>
+            <p id="emailModalTitle" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
+          </div>
+          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+            <span class="text-[11px] font-bold text-ink-mute">主辦人</span>
+            <p id="emailModalHost" class="mt-0.5 font-extrabold text-ink text-sm break-words">--</p>
+          </div>
+          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+            <span class="text-[11px] font-bold text-ink-mute">確認時間</span>
+            <p id="emailModalTime" class="mt-0.5 font-extrabold text-brand-700 text-sm break-words">--</p>
+          </div>
+          <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+            <span class="text-[11px] font-bold text-ink-mute">確認地點</span>
+            <p id="emailModalLocation" class="mt-0.5 font-extrabold text-peach-700 text-sm break-words">--</p>
+          </div>
+        </div>
+
+        <div id="emailModalNotesRow" class="hidden rounded-xl bg-white p-2.5 border border-stone-200/70">
+          <span class="text-[11px] font-bold text-ink-mute">活動備註</span>
+          <p id="emailModalNotes" class="mt-0.5 text-ink whitespace-pre-wrap break-words leading-relaxed">--</p>
+        </div>
+
+        <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+          <span class="text-[11px] font-bold text-ink-mute">參加成員名單</span>
+          <p id="emailModalParticipants" class="mt-0.5 font-semibold text-ink break-words leading-relaxed">--</p>
+        </div>
+
+        <div class="rounded-xl bg-white p-2.5 border border-stone-200/70">
+          <span class="text-[11px] font-bold text-ink-mute">專屬房間連結</span>
+          <p id="emailModalLink" class="mt-0.5 font-mono text-[11px] text-brand-700 break-all">--</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <a
+          id="emailModalMailtoBtn"
+          href="#"
+          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3.5 text-xs font-extrabold text-brand-700 hover:bg-brand-100 active:scale-95 transition"
+        >
+          <span>✉️</span>
+          <span>以郵件軟體開啟</span>
+        </a>
+        <button
+          type="button"
+          onclick="copyEmailNotificationContent()"
+          class="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-stone-100 px-3.5 text-xs font-extrabold text-ink hover:bg-stone-200 active:scale-95 transition"
+        >
+          <span>📋</span>
+          <span>複製通知信全文</span>
+        </button>
+        <button
+          type="button"
+          onclick="closeEmailNotificationModal()"
+          class="inline-flex h-10 items-center justify-center rounded-xl bg-brand-600 px-4 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition"
+        >
+          <span>我知道了</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast" class="pointer-events-none fixed left-1/2 top-20 z-50 -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity duration-200"></div>
 
@@ -945,7 +1076,16 @@
           au: room.actorUpdatedAt || {},
           ki: room.kickedIds || {},
           l: (room.locations || []).map(l => ({ id: l.id, n: l.name, m: l.mapUrl || '', s: l.notes || '' })),
-          pts: cleanParticipants.map(p => ({ id: p.id, n: p.nickname, h: p.isHost ? 1 : 0, l: p.locationId || null })),
+          pts: cleanParticipants.map(p => ({
+            id: p.id,
+            n: p.nickname,
+            h: p.isHost ? 1 : 0,
+            l: p.locationId || null,
+            im: p.isMember ? 1 : 0,
+            mu: p.memberUid || '',
+            me: p.memberEmail || '',
+            re: p.receiveFinalizedEmail !== undefined ? (p.receiveFinalizedEmail ? 1 : 0) : 1
+          })),
           v: cleanVotes.map(v => ({ p: v.participantId, d: v.date, s: v.slot }))
         };
         const jsonStr = JSON.stringify(compact);
@@ -986,7 +1126,16 @@
           actorUpdatedAt: compact.au || {},
           kickedIds: compact.ki || {},
           locations: (compact.l || []).map(l => ({ id: l.id, name: l.n, mapUrl: l.m, notes: l.s })),
-          participants: (compact.pts || []).map(p => ({ id: p.id, nickname: p.n, isHost: Boolean(p.h), locationId: p.l })),
+          participants: (compact.pts || []).map(p => ({
+            id: p.id,
+            nickname: p.n,
+            isHost: Boolean(p.h),
+            locationId: p.l,
+            isMember: Boolean(p.im),
+            memberUid: p.mu || '',
+            memberEmail: p.me || '',
+            receiveFinalizedEmail: p.re !== undefined ? Boolean(p.re) : true
+          })),
           votes: (compact.v || []).map(v => ({ participantId: v.p, date: v.d, slot: v.s }))
         };
       } catch (err) {
@@ -1656,21 +1805,58 @@
     }
 
     function loadMemberProfileForUser(user) {
-      if (!user) return { nickname: '', livingArea: '' };
+      if (!user) return { nickname: '', livingArea: '', receiveFinalizedEmail: true };
       try {
         const raw = localStorage.getItem(getMemberProfileKey(user));
         if (raw) {
           const parsed = JSON.parse(raw);
           return {
             nickname: (parsed.nickname || user.displayName || '').trim(),
-            livingArea: (parsed.livingArea || '').trim()
+            livingArea: (parsed.livingArea || '').trim(),
+            receiveFinalizedEmail: parsed.receiveFinalizedEmail !== undefined ? Boolean(parsed.receiveFinalizedEmail) : true
           };
         }
       } catch (e) {}
       return {
         nickname: (user.displayName || '').trim(),
-        livingArea: ''
+        livingArea: '',
+        receiveFinalizedEmail: true
       };
+    }
+
+    function syncCurrentMemberPreferenceToActiveRoom() {
+      if (!state.isMember || !state.user || !state.event || !Array.isArray(state.event.participants)) return;
+      const receiveEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
+      const userEmail = (state.user.email || '').trim();
+      const userUid = (state.user.uid || '').trim();
+      const actorId = typeof currentActorId === 'function' ? currentActorId() : null;
+      let touched = false;
+
+      state.event.participants.forEach(p => {
+        if (!p) return;
+        const isMatch = (actorId && actorId !== 'p_new_visitor' && p.id === actorId) ||
+                        (userUid && p.memberUid === userUid) ||
+                        (p.isHost && userUid && state.event.hostUid === userUid);
+        if (isMatch) {
+          if (p.isMember !== true || p.memberEmail !== userEmail || p.memberUid !== userUid || p.receiveFinalizedEmail !== receiveEmail) {
+            p.isMember = true;
+            p.memberUid = userUid;
+            p.memberEmail = userEmail;
+            p.receiveFinalizedEmail = receiveEmail;
+            touched = true;
+          }
+        }
+      });
+
+      if (touched) {
+        const nowTs = Date.now();
+        state.event.updatedAt = nowTs;
+        state.event.actorUpdatedAt = state.event.actorUpdatedAt || {};
+        if (actorId && actorId !== 'p_new_visitor') {
+          state.event.actorUpdatedAt[actorId] = nowTs;
+        }
+        saveRoomToStorage(state.event);
+      }
     }
 
     function getPreferredNickname() {
@@ -1789,12 +1975,14 @@
       if (!state.user) return;
       const prefNick = getPreferredNickname();
       const area = state.user.livingArea || '';
+      const receiveEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
       const nameEl = document.getElementById('menuAccountName');
       const emailEl = document.getElementById('menuAccountEmail');
       const avatarBox = document.getElementById('menuAvatarBox');
       const areaBadge = document.getElementById('menuLivingAreaBadge');
       const nickInput = document.getElementById('profileNicknameInput');
       const areaInput = document.getElementById('profileAreaInput');
+      const emailNotifyCb = document.getElementById('profileEmailNotifyCheckbox');
       const savedHint = document.getElementById('profileSavedHint');
 
       if (savedHint) savedHint.classList.add('hidden');
@@ -1817,6 +2005,7 @@
       }
       if (nickInput) nickInput.value = prefNick;
       if (areaInput) areaInput.value = area;
+      if (emailNotifyCb) emailNotifyCb.checked = receiveEmail;
     }
 
     function pickLivingAreaTag(areaName) {
@@ -1832,17 +2021,21 @@
       const oldNick = getPreferredNickname();
       const nickInput = document.getElementById('profileNicknameInput');
       const areaInput = document.getElementById('profileAreaInput');
+      const emailNotifyCb = document.getElementById('profileEmailNotifyCheckbox');
 
       const newNick = (nickInput?.value || '').trim() || state.user.displayName || 'Google 會員';
       const newArea = (areaInput?.value || '').trim();
+      const receiveEmail = emailNotifyCb ? Boolean(emailNotifyCb.checked) : true;
 
       state.user.preferredNickname = newNick;
       state.user.livingArea = newArea;
+      state.user.receiveFinalizedEmail = receiveEmail;
 
       try {
         localStorage.setItem(getMemberProfileKey(state.user), JSON.stringify({
           nickname: newNick,
           livingArea: newArea,
+          receiveFinalizedEmail: receiveEmail,
           updatedAt: Date.now()
         }));
         localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(state.user));
@@ -1863,12 +2056,16 @@
       const savedHint = document.getElementById('profileSavedHint');
       if (savedHint) savedHint.classList.remove('hidden');
 
+      // Sync updated email notification preference to active room if the user is host/participant
+      syncCurrentMemberPreferenceToActiveRoom();
+
       // Automatically apply preferred nickname to Create & Join inputs
       autoApplyPreferredNicknameToInputs(oldNick);
       renderRoom();
       renderDashboard();
 
-      showToast(`✅ 已儲存個人資料！常用暱稱「${newNick}」${newArea ? '、生活圈「' + newArea + '」' : ''}已設定完成`);
+      const emailHint = receiveEmail ? '已開啟成行 E-Mail 通知' : '已關閉成行 E-Mail 通知';
+      showToast(`✅ 已儲存個人資料！常用暱稱「${newNick}」${newArea ? '、生活圈「' + newArea + '」' : ''}（${emailHint}）`);
       setTimeout(() => {
         closeMemberMenu();
       }, 450);
@@ -1894,6 +2091,7 @@
       const profile = loadMemberProfileForUser(chosenUser);
       chosenUser.preferredNickname = profile.nickname || chosenUser.displayName || 'Google 會員';
       chosenUser.livingArea = profile.livingArea || '';
+      chosenUser.receiveFinalizedEmail = profile.receiveFinalizedEmail !== undefined ? Boolean(profile.receiveFinalizedEmail) : true;
 
       try {
         localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(chosenUser));
@@ -1950,10 +2148,14 @@
         const prof = loadMemberProfileForUser(user);
         user.preferredNickname = user.preferredNickname || prof.nickname || user.displayName || 'Google 會員';
         user.livingArea = user.livingArea !== undefined ? user.livingArea : (prof.livingArea || '');
+        user.receiveFinalizedEmail = user.receiveFinalizedEmail !== undefined ? Boolean(user.receiveFinalizedEmail) : (prof.receiveFinalizedEmail !== undefined ? Boolean(prof.receiveFinalizedEmail) : true);
       }
 
       state.user = user || null;
       state.isMember = Boolean(user);
+      if (state.isMember && state.user) {
+        syncCurrentMemberPreferenceToActiveRoom();
+      }
 
       document.getElementById('savedSpotsSection').classList.toggle('hidden', !state.isMember);
       const authBtn = document.getElementById('authBtn');
@@ -2370,7 +2572,18 @@
         finalLocation: null,
         locations: locList,
         participants: [
-          { id: 'p_host', nickname: host, isHost: true, locationId: locList[0]?.id || null }
+          {
+            id: 'p_host',
+            nickname: host,
+            isHost: true,
+            locationId: locList[0]?.id || null,
+            isMember: Boolean(state.isMember && state.user),
+            memberUid: state.isMember && state.user ? (state.user.uid || '') : '',
+            memberEmail: state.isMember && state.user ? (state.user.email || '') : '',
+            receiveFinalizedEmail: state.isMember && state.user
+              ? (state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true)
+              : true
+          }
         ],
         votes: []
       };
@@ -2827,6 +3040,26 @@
         if (gcalEl) {
           const compactDate = chosenDate.replace(/-/g, '');
           gcalEl.href = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T${startHms}/${compactDate}T${endHms}&location=${encodeURIComponent(chosenLoc)}`;
+        }
+
+        // Update Finalized Member E-Mail Notification Banner
+        const emailNoticeBox = document.getElementById('finalizedEmailNoticeBox');
+        const emailRecipientsText = document.getElementById('finalizedEmailRecipientsText');
+        if (emailNoticeBox && emailRecipientsText) {
+          const recipients = getFinalizedEmailRecipients(ev);
+          if (recipients.length > 0) {
+            emailNoticeBox.classList.remove('hidden');
+            const formattedList = recipients.map(r => `${r.nickname} (${r.email})`).join('、');
+            if (state.lang === 'en') {
+              emailRecipientsText.textContent = `Sent finalized event details to ${recipients.length} signed-in member(s): ${formattedList}`;
+            } else if (state.lang === 'ja') {
+              emailRecipientsText.textContent = `ログイン会員 ${recipients.length} 名に確定詳細メールを送信しました：${formattedList}`;
+            } else {
+              emailRecipientsText.textContent = `已將成行活動詳細內容寄送至 ${recipients.length} 位登入會員信箱：${formattedList}`;
+            }
+          } else {
+            emailNoticeBox.classList.add('hidden');
+          }
         }
       }
 
@@ -3527,6 +3760,12 @@
         // Case 2: Token already exists -> update in place without incrementing headcount
         existing.nickname = nick;
         if (existing.isHost) ev.hostNickname = nick;
+        if (state.isMember && state.user) {
+          existing.isMember = true;
+          existing.memberUid = state.user.uid || '';
+          existing.memberEmail = state.user.email || '';
+          existing.receiveFinalizedEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
+        }
         ev.actorUpdatedAt[actorId] = nowTs;
         ev.updatedAt = nowTs;
         showToast(`✓ 已更新「${nick}」的時段與地點並同步至雲端（維持 ${ev.participants.length}/${ev.maxParticipants}）`);
@@ -3548,7 +3787,13 @@
           id: assignedId,
           nickname: nick,
           isHost: false,
-          locationId: window.__draftLocId || ev.locations[0]?.id || null
+          locationId: window.__draftLocId || ev.locations[0]?.id || null,
+          isMember: Boolean(state.isMember && state.user),
+          memberUid: state.isMember && state.user ? (state.user.uid || '') : '',
+          memberEmail: state.isMember && state.user ? (state.user.email || '') : '',
+          receiveFinalizedEmail: state.isMember && state.user
+            ? (state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true)
+            : true
         });
         // Reassign any draft votes from p_new_visitor to assignedId
         ev.votes.forEach(v => {
@@ -3602,15 +3847,20 @@
         const isMeNonHost = p.id === actorId && !p.isHost;
         const canKick = isHost && state.isMember && !p.isHost && !ev.isFinalized;
         const canLeave = isMeNonHost && !ev.isFinalized;
+        const isMemberParticipant = Boolean(p.isMember || p.memberEmail || (p.isHost && ev.hostEmail));
+        const wantsEmail = isMemberParticipant && (p.receiveFinalizedEmail !== undefined ? Boolean(p.receiveFinalizedEmail) : true);
         return `
           <li class="flex items-center justify-between py-2.5">
-            <div class="flex items-center gap-2.5">
-              <span class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-extrabold text-brand-800">
                 ${p.nickname.slice(0, 2)}
               </span>
-              <div>
-                <span class="font-bold text-ink text-sm">${p.nickname}</span>
-                ${p.isHost ? `<span class="ml-1.5 rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="font-bold text-ink text-sm">${p.nickname}</span>
+                  ${p.isHost ? `<span class="rounded-full bg-peach-100 px-2 py-0.5 text-[11px] font-extrabold text-peach-700">👑 主辦人</span>` : ''}
+                  ${wantsEmail ? `<span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700" title="已登入會員並開啟接收成行 E-Mail 通知">📧 成行通知</span>` : ''}
+                </div>
               </div>
             </div>
             ${canLeave ? `
@@ -3686,12 +3936,180 @@
       renderRoom();
     }
 
+    function getFinalizedEmailRecipients(ev = state.event) {
+      if (!ev || !Array.isArray(ev.participants)) return [];
+      const recipients = [];
+      const seenEmails = new Set();
+
+      ev.participants.forEach(p => {
+        if (!p || p.id === 'p_new_visitor') return;
+        let email = (p.memberEmail || '').trim();
+        if (!email && p.isHost && ev.hostEmail) {
+          email = String(ev.hostEmail).trim();
+        }
+        const isMember = Boolean(p.isMember || email || (p.isHost && ev.hostUid));
+        if (!isMember || !email) return;
+        const wantsEmail = p.receiveFinalizedEmail !== undefined ? Boolean(p.receiveFinalizedEmail) : true;
+        if (!wantsEmail) return;
+
+        const lower = email.toLowerCase();
+        if (!seenEmails.has(lower)) {
+          seenEmails.add(lower);
+          recipients.push({
+            id: p.id,
+            nickname: p.nickname || (p.isHost ? ev.hostNickname : '會員'),
+            email: email,
+            isHost: Boolean(p.isHost)
+          });
+        }
+      });
+      return recipients;
+    }
+
+    function buildFinalizedEmailPayload(ev = state.event) {
+      if (!ev) return null;
+      const top = computeTop3();
+      const chosenDate = ev.finalDate || top[0]?.date || dateOffsetStr(3);
+      const chosenSlot = ev.finalSlot || top[0]?.slot || 'EVENING';
+      const slotLabel = formatSlotDisplayLabel(chosenSlot, state.lang, true);
+      const chosenLoc = ev.finalLocation || (ev.locations?.[0]?.name) || '地點尚未確定';
+      const shareUrl = getRoomShareUrl(ev);
+      const cleanNotes = (ev.notes || '').trim();
+      const participantNames = (ev.participants || [])
+        .filter(p => p && p.id !== 'p_new_visitor')
+        .map(p => `${p.nickname}${p.isHost ? ' (主辦人)' : ''}`)
+        .join('、');
+      const recipients = getFinalizedEmailRecipients(ev);
+
+      const subject = `【揪一下成行通知】「${ev.title}」已拍板定案！（${chosenDate}）`;
+      const lines = [
+        `您好！您參與的揪團活動「${ev.title}」已由主辦人 ${ev.hostNickname} 拍板定案，以下是成行活動詳細內容：`,
+        '',
+        `📌 活動主題：${ev.title}`,
+        `👑 主辦人：${ev.hostNickname}`,
+        `🕒 確認時間：${chosenDate} · ${slotLabel}`,
+        `📍 確認地點：${chosenLoc}`
+      ];
+      if (cleanNotes) {
+        lines.push(`📝 活動備註：${cleanNotes}`);
+      }
+      lines.push(
+        `👥 參加成員（共 ${(ev.participants || []).filter(p => p && p.id !== 'p_new_visitor').length} 人）：${participantNames}`,
+        `🔑 房間代碼：${ev.id}`,
+        `🔗 活動房間連結：${shareUrl}`,
+        '',
+        '—— 揪一下 Squad Up 線上即時聚會協調'
+      );
+
+      return {
+        recipients,
+        subject,
+        bodyText: lines.join('\n'),
+        title: ev.title,
+        hostNickname: ev.hostNickname,
+        timeText: `${chosenDate} · ${slotLabel}`,
+        locationText: chosenLoc,
+        notes: cleanNotes,
+        participantsText: participantNames,
+        roomCode: ev.id,
+        shareUrl
+      };
+    }
+
+    function openEmailNotificationModal() {
+      const ev = state.event;
+      if (!ev) return;
+      const payload = buildFinalizedEmailPayload(ev);
+      if (!payload) return;
+
+      const recListEl = document.getElementById('emailModalRecipientsList');
+      if (recListEl) {
+        if (payload.recipients.length > 0) {
+          recListEl.innerHTML = payload.recipients.map(r => `
+            <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+              <span>${r.isHost ? '👑' : '👤'}</span>
+              <span>${r.nickname}</span>
+              <span class="font-mono text-[10px] text-emerald-700">&lt;${r.email}&gt;</span>
+            </span>
+          `).join('');
+        } else {
+          recListEl.innerHTML = `<span class="text-xs text-ink-mute">目前無開啟成行 E-Mail 通知的登入會員</span>`;
+        }
+      }
+
+      const subjEl = document.getElementById('emailModalSubject');
+      if (subjEl) subjEl.textContent = payload.subject;
+      const codeEl = document.getElementById('emailModalRoomCodeBadge');
+      if (codeEl) codeEl.textContent = payload.roomCode;
+      const titleEl = document.getElementById('emailModalTitle');
+      if (titleEl) titleEl.textContent = payload.title;
+      const hostEl = document.getElementById('emailModalHost');
+      if (hostEl) hostEl.textContent = payload.hostNickname;
+      const timeEl = document.getElementById('emailModalTime');
+      if (timeEl) timeEl.textContent = payload.timeText;
+      const locEl = document.getElementById('emailModalLocation');
+      if (locEl) locEl.textContent = payload.locationText;
+
+      const notesRow = document.getElementById('emailModalNotesRow');
+      const notesEl = document.getElementById('emailModalNotes');
+      if (notesRow && notesEl) {
+        if (payload.notes) {
+          notesEl.textContent = payload.notes;
+          notesRow.classList.remove('hidden');
+        } else {
+          notesEl.textContent = '';
+          notesRow.classList.add('hidden');
+        }
+      }
+
+      const partsEl = document.getElementById('emailModalParticipants');
+      if (partsEl) partsEl.textContent = payload.participantsText;
+      const linkEl = document.getElementById('emailModalLink');
+      if (linkEl) linkEl.textContent = payload.shareUrl;
+
+      const mailtoBtn = document.getElementById('emailModalMailtoBtn');
+      if (mailtoBtn) {
+        const toEmails = payload.recipients.map(r => r.email).join(',');
+        mailtoBtn.href = `mailto:${toEmails}?subject=${encodeURIComponent(payload.subject)}&body=${encodeURIComponent(payload.bodyText)}`;
+      }
+
+      const modal = document.getElementById('emailNotificationModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeEmailNotificationModal() {
+      const modal = document.getElementById('emailNotificationModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function copyEmailNotificationContent() {
+      const payload = buildFinalizedEmailPayload(state.event);
+      if (!payload) return;
+      const fullText = `${payload.subject}\n\n${payload.bodyText}`;
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(fullText).then(() => {
+          showToast('📋 已複製成行 E-Mail 通知信完整內容！');
+        }).catch(() => {
+          showToast('📋 已複製成行通知內容！');
+        });
+      } else {
+        showToast('📋 已複製成行通知內容！');
+      }
+    }
+
     function finalizeGathering() {
       const ev = state.event;
       if (!isRoomHostViewer(ev)) {
         showToast('⚠️ 僅主辦人可拍板定案！');
         return;
       }
+      syncCurrentMemberPreferenceToActiveRoom();
       const top = computeTop3();
       const chosenDate = top[0]?.date || dateOffsetStr(3);
       const chosenSlot = top[0]?.slot || 'EVENING';
@@ -3725,9 +4143,17 @@
       const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${compactDate}T${startHms}/${compactDate}T${endHms}&location=${encodeURIComponent(chosenLoc)}`;
       document.getElementById('gcalLink').href = gcalUrl;
 
+      const recipients = getFinalizedEmailRecipients(ev);
+
       saveRoomToStorage(ev);
       updateUrlHash(ev);
-      showToast('🎉 已拍板定案！所有投票已鎖定，現在可匯出 Google 日曆或下載 .ics 檔案。');
+      if (recipients.length > 0) {
+        const emailSummary = recipients.map(r => `${r.nickname} (${r.email})`).join('、');
+        showToast(`🎉 已拍板定案！已發送成行 E-Mail 通知予 ${recipients.length} 位登入會員：${emailSummary}`);
+        openEmailNotificationModal();
+      } else {
+        showToast('🎉 已拍板定案！所有投票已鎖定，現在可匯出 Google 日曆或下載 .ics 檔案。');
+      }
       renderRoom();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -4293,7 +4719,23 @@
       ['修改活動備註','Edit event notes','イベント備考を編集'],
       ['編輯活動備註（選填，限 500 字以內）','Edit event notes (optional, up to 500 characters)','イベント備考を編集（任意・500文字以内）'],
       ['儲存備註','Save notes','備考を保存'],
-      ['取消','Cancel','キャンセル']
+      ['取消','Cancel','キャンセル'],
+      ['接收成行 E-Mail 通知','Receive finalized gathering E-Mail notifications','開催確定のE-Mail通知を受け取る'],
+      ['當主辦人拍板定案後，自動寄送成行活動詳細內容至會員信箱（僅限登入會員的主辦人與參加者）','When the host finalizes the gathering, automatically email full event details to signed-in member hosts & participants','幹事が確定した際、ログイン会員の主催者・参加者へ確定した詳細内容をメールで自動送信します'],
+      ['📧 成行通知','📧 Email notify','📧 確定メール通知'],
+      ['已發送成行 E-Mail 通知予登入會員','Finalized E-Mail notifications sent to signed-in members','ログイン会員へ開催確定E-Mail通知を送信しました'],
+      ['📩 檢視成行通知信內容','📩 View email notification','📩 通知メール内容を見る'],
+      ['成行 E-Mail 通知信','Finalized Gathering E-Mail Notification','開催確定 E-Mail 通知'],
+      ['✓ 已寄送予有登入會員並勾選接收通知的主辦人與參加者','✓ Sent to signed-in member hosts & participants who enabled email notifications','✓ メール通知をオンにしたログイン会員（幹事・参加者）に送信済み'],
+      ['收件會員（已登入且開啟通知）：','Recipients (signed-in members with notifications enabled):','宛先会員（ログイン済み・通知オン）：'],
+      ['信件主旨：','Subject:','件名：'],
+      ['🎉 揪團活動成行詳細內容','🎉 Confirmed Gathering Details','🎉 開催確定イベントの詳細内容'],
+      ['主辦人','Host','幹事'],
+      ['參加成員名單','Participants','参加メンバー一覧'],
+      ['專屬房間連結','Room Link','専用ルームリンク'],
+      ['以郵件軟體開啟','Open in mail app','メールアプリで開く'],
+      ['複製通知信全文','Copy email text','メール全文をコピー'],
+      ['我知道了','Got it','閉じる']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
@@ -4324,7 +4766,7 @@
     }
     function translatePageText() {
       const lang = state.lang;
-      const roots = ['view-home', 'view-create', 'view-room', 'view-dashboard', 'stickySubmitBar', 'slotSheetPanel', 'passcodeModal', 'googleAccountModal', 'memberDropdownMenu', 'authMenuContainer'];
+      const roots = ['view-home', 'view-create', 'view-room', 'view-dashboard', 'stickySubmitBar', 'slotSheetPanel', 'passcodeModal', 'googleAccountModal', 'emailNotificationModal', 'memberDropdownMenu', 'authMenuContainer'];
       for (const id of roots) {
         const root = document.getElementById(id);
         if (!root) continue;
