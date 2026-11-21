@@ -1412,6 +1412,37 @@
       return null;
     }
 
+    function getRecentTargetRoom() {
+      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
+      const cloudList = Array.isArray(state.cloudRoomsCache) ? state.cloudRoomsCache : [];
+      if (recentId && recentId !== 'friday-hotpot-88') {
+        const localRoom = loadRoomFromStorage(recentId);
+        const cloudMatch = cloudList.find(r => r && r.id === recentId);
+        if (localRoom && cloudMatch) return mergeRoomStates(localRoom, cloudMatch);
+        if (localRoom) return localRoom;
+        if (cloudMatch) return cloudMatch;
+      }
+      if (state.isMember && state.user) {
+        const myUid = state.user.uid;
+        const myUidActor = myUid ? ('p_u_' + myUid.slice(0, 10)) : null;
+        const memberCloudRooms = cloudList
+          .filter(r => r && r.id && r.id !== 'friday-hotpot-88' && (
+            (myUid && r.hostUid === myUid) ||
+            (r.participants || []).some(p => (myUidActor && p.id === myUidActor) || (myUid && p.uid === myUid))
+          ))
+          .sort((a, b) => {
+            const tsA = typeof a.updatedAt === 'number' ? a.updatedAt : (Date.parse(a.updatedAt || a.createdAt || '') || 0);
+            const tsB = typeof b.updatedAt === 'number' ? b.updatedAt : (Date.parse(b.updatedAt || b.createdAt || '') || 0);
+            return tsB - tsA;
+          });
+        if (memberCloudRooms.length > 0) return memberCloudRooms[0];
+      }
+      if (state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+        return state.event;
+      }
+      return null;
+    }
+
     function updateRecentRoomCard() {
       const emptyEl = document.getElementById('recentRoomEmpty');
       const cardBtn = document.getElementById('recentRoomCardBtn');
@@ -1421,14 +1452,7 @@
       const storageLabel = document.getElementById('recentRoomStorageLabel');
       const storageBadge = document.getElementById('recentRoomStorageBadge');
 
-      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
-      let targetRoom = null;
-      if (recentId && recentId !== 'friday-hotpot-88') {
-        targetRoom = loadRoomFromStorage(recentId);
-      }
-      if (!targetRoom && state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
-        targetRoom = state.event;
-      }
+      const targetRoom = getRecentTargetRoom();
 
       if (targetRoom) {
         if (emptyEl) emptyEl.classList.add('hidden');
@@ -2097,6 +2121,13 @@
 
       renderRoom();
       renderDashboard();
+      updateRecentRoomCard();
+      if (state.isMember && window.FirebaseBridge?.fetchCloudRooms) {
+        window.FirebaseBridge.fetchCloudRooms().then(() => {
+          updateRecentRoomCard();
+          if (state.currentView === 'dashboard') renderDashboardLists();
+        });
+      }
     }
 
     function toggleAuth() {
@@ -4362,26 +4393,26 @@
 
     // ==================== HOME JOIN & QUICK ACTIONS ====================
     function openRecentRoom() {
-      const recentId = localStorage.getItem(RECENT_ROOM_KEY);
-      if (recentId && recentId !== 'friday-hotpot-88') {
-        const room = loadRoomFromStorage(recentId);
-        if (room) {
-          loadRoomIntoState(room, false, false, false);
-          updateUrlHash(room);
-          switchView('room');
-          if (window.CloudSync?.fetchRoom) {
-            window.CloudSync.fetchRoom(recentId).then(cloudRoom => {
-              if (cloudRoom) {
-                const merged = mergeRoomStates(state.event || room, cloudRoom);
-                loadRoomIntoState(merged, false, true, false);
-              }
-            });
-          }
-          return;
-        }
-      }
-      if (state.event && state.event.id && state.event.id !== 'friday-hotpot-88') {
+      const room = getRecentTargetRoom();
+      if (room && room.id && room.id !== 'friday-hotpot-88') {
+        loadRoomIntoState(room, false, false, false);
+        updateUrlHash(room);
         switchView('room');
+        if (window.CloudSync?.fetchRoom) {
+          window.CloudSync.fetchRoom(room.id).then(cloudRoom => {
+            if (cloudRoom) {
+              const merged = mergeRoomStates(state.event || room, cloudRoom);
+              loadRoomIntoState(merged, false, true, false);
+            }
+          });
+        } else if (window.FirebaseBridge?.loadRoomFromCloud) {
+          window.FirebaseBridge.loadRoomFromCloud(room.id).then(cloudRoom => {
+            if (cloudRoom) {
+              const merged = mergeRoomStates(state.event || room, cloudRoom);
+              loadRoomIntoState(merged, false, true, false);
+            }
+          });
+        }
         return;
       }
       switchView('room');
@@ -4883,6 +4914,9 @@
           });
           window.state.cloudRoomsCache = list;
           window.state.cloudConnected = true;
+          if (typeof window.updateRecentRoomCard === 'function') {
+            window.updateRecentRoomCard();
+          }
           if (window.state.currentView === 'dashboard') {
             window.renderDashboardLists();
           }
@@ -4899,6 +4933,11 @@
       window.FirebaseBridge.saveRoomToCloud(window.__pendingCloudSyncRoom);
       window.FirebaseBridge.subscribeToRoom(window.__pendingCloudSyncRoom.id);
       window.__pendingCloudSyncRoom = null;
+    }
+
+    // If member session was already restored before module load, sync cloud rooms for home & dashboard
+    if (window.state.isMember) {
+      window.FirebaseBridge.fetchCloudRooms();
     }
 
     // If URL opened with #room=SQ-XXXX, check Firestore in background for latest cloud data
