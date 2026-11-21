@@ -65,6 +65,7 @@ Squad Up/
 │   ├── Gemini_v1.10.0/
 │   └── README.md              # HTML 迭代紀錄
 ├── app/                       # Next.js 14、Prisma、PostgreSQL 全端應用
+├── gas/                       # Google Apps Script (GAS) 成行 E-Mail 自動發信腳本
 ├── docs/                      # 產品規格、企劃與競品研究
 └── README.md
 ```
@@ -109,7 +110,7 @@ npm run db:local
 
 ### v1.10.0 (2026-11-21)
 - **新增**：於會員個人資料設定選單新增「接收成行 E-Mail 通知」核取方塊（預設勾選，僅限已登入會員的主辦人與參加者），並在總參加名單顯示 `📧 成行通知` 標章。
-- **新增**：當主辦人將活動「拍板定案」後，不額外彈出跳窗提醒，直接將成行活動詳細內容寄送至已登入 Google 會員且勾選接收通知的主辦人與參加者 Gmail，並於置頂成團資訊卡直接呈現已寄送的收件會員 Gmail 名單。
+- **新增**：串接 Google Apps Script (`gas/Code.gs`) Web App 郵件服務，當主辦人將活動「拍板定案」後，不額外彈出跳窗提醒，直接將成行活動詳細內容寄送至已登入 Google 會員且勾選接收通知的主辦人與參加者 Gmail，並於置頂成團資訊卡直接呈現已寄送的收件會員 Gmail 名單。
 - **調整**：補齊成行 E-Mail 通知相關介面之繁體中文、英文、日文三語翻譯，並於 `version/Gemini_v1.10.0/index.html` 新增本版備份（同時同步 `version/Gemini_v1.7/index.html`）。
 
 ### v1.9.0 (2026-11-19)

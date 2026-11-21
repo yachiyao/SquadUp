@@ -3909,37 +3909,70 @@
       };
     }
 
+    // ==================== GOOGLE APPS SCRIPT (GAS) GMAIL NOTIFICATION RELAY ====================
+    // 部署 gas/Code.gs 為網頁應用程式 (Web App) 後，將產生的 https://script.google.com/macros/s/.../exec 填入此處：
+    const DEFAULT_GAS_EMAIL_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxKp6Vx9ELnCWVz7JW-xDAmQa68IaD3l-l8H3UkR2BoQXzKZlh2qgTcm18h832nsib5/exec';
+    const GAS_WEBAPP_STORAGE_KEY = 'squadup_gas_webapp_url_v1';
+
+    function getGasEmailWebAppUrl() {
+      try {
+        const saved = (localStorage.getItem(GAS_WEBAPP_STORAGE_KEY) || '').trim();
+        if (saved && saved.startsWith('https://script.google.com/')) return saved;
+      } catch (e) {}
+      return (DEFAULT_GAS_EMAIL_WEBAPP_URL || '').trim();
+    }
+
+    function setGasEmailWebAppUrl(url) {
+      const clean = (url || '').trim();
+      try {
+        if (clean) {
+          localStorage.setItem(GAS_WEBAPP_STORAGE_KEY, clean);
+        } else {
+          localStorage.removeItem(GAS_WEBAPP_STORAGE_KEY);
+        }
+      } catch (e) {}
+      return clean;
+    }
+
     async function dispatchFinalizedGmailNotifications(ev = state.event) {
       const payload = buildFinalizedEmailPayload(ev);
-      if (!payload || !payload.recipients || payload.recipients.length === 0) return [];
+      if (!payload || !payload.recipients || payload.recipients.length === 0) return { sent: false, recipients: [] };
 
-      // Dispatch background Gmail notifications to each signed-in member's Google account email without any popup modal
-      for (const r of payload.recipients) {
-        try {
-          fetch(`https://formsubmit.co/ajax/${encodeURIComponent(r.email)}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-              _subject: payload.subject,
-              _template: 'box',
-              _captcha: 'false',
-              收件會員: `${r.nickname} (${r.email})`,
-              活動主題: payload.title,
-              主辦人: payload.hostNickname,
-              確認時間: payload.timeText,
-              確認地點: payload.locationText,
-              活動備註: payload.notes || '無',
-              參加成員名單: payload.participantsText,
-              房間代碼: payload.roomCode,
-              活動房間連結: payload.shareUrl
-            })
-          }).catch(() => {});
-        } catch (err) {}
+      const gasUrl = getGasEmailWebAppUrl();
+      if (!gasUrl) {
+        console.warn('GAS_EMAIL_WEBAPP_URL 尚未設定，請將 gas/Code.gs 部署後的網址填入 DEFAULT_GAS_EMAIL_WEBAPP_URL');
+        return { sent: false, reason: 'missing_gas_url', recipients: payload.recipients };
       }
-      return payload.recipients;
+
+      try {
+        // Use text/plain to avoid CORS preflight block on Google Apps Script Web App endpoints
+        const res = await fetch(gasUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify(payload)
+        });
+        let resultData = null;
+        try { resultData = await res.json(); } catch (e) {}
+        return { sent: true, response: resultData, recipients: payload.recipients };
+      } catch (err) {
+        // Fallback with no-cors mode if browser blocks redirect response reading from script.googleusercontent.com
+        try {
+          await fetch(gasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify(payload)
+          });
+          return { sent: true, response: { ok: true, mode: 'no-cors' }, recipients: payload.recipients };
+        } catch (err2) {
+          console.warn('GAS email dispatch error:', err2);
+          return { sent: false, reason: 'network_error', recipients: payload.recipients };
+        }
+      }
     }
 
     function finalizeGathering() {
