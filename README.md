@@ -107,6 +107,9 @@ npm run db:local
 
 ## 版本紀錄 (Changelog)
 
+### v1.10.2 (2026-11-21)
+- **修復**：補強舊房間與跨裝置同步時的會員信箱自動補齊機制（`mergeRoomStates`、`loadRoomIntoState` 與 `getFinalizedEmailRecipients`），確保在舊版建立的房間或雲端同步後的房間按下「拍板定案」時，能完整保留並自動補入當前登入主辦人與會員參加者的 Gmail 以觸發 GAS 發信；同時保持房間物件欄位與 `firestore.rules` 白名單完全相容。
+
 ### v1.10.1 (2026-11-21)
 - **修復**：修正會員於不同瀏覽器登入 Google 帳號後，首頁「最近開啟的房間」僅讀取本機 `localStorage` 而無法顯示雲端紀錄的問題。現在於單檔原型 `index.html` 與 Next.js 版 `app/components/home/RecentRooms.tsx` 中，登入會員後皆會同步讀取雲端建立與參與過的房間紀錄並支援直接開啟。
 

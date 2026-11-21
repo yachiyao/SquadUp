@@ -1081,7 +1081,17 @@
         if (pB && !pA) return { ...pB };
         const actA = Number(roomA.actorUpdatedAt?.[pid]) || tsA;
         const actB = Number(roomB.actorUpdatedAt?.[pid]) || tsB;
-        return actB >= actA ? { ...pB } : { ...pA };
+        const winner = actB >= actA ? { ...pB } : { ...pA };
+        const older = actB >= actA ? pA : pB;
+        if (older) {
+          if (!winner.isMember && older.isMember) winner.isMember = true;
+          if (!winner.memberUid && older.memberUid) winner.memberUid = older.memberUid;
+          if (!winner.memberEmail && older.memberEmail) winner.memberEmail = older.memberEmail;
+          if (winner.receiveFinalizedEmail === undefined && older.receiveFinalizedEmail !== undefined) {
+            winner.receiveFinalizedEmail = older.receiveFinalizedEmail;
+          }
+        }
+        return winner;
       });
 
       const mergedVotes = [];
@@ -1128,6 +1138,8 @@
         id: primary.id,
         title: primary.title,
         hostNickname: mergedParticipants.find(p => p.isHost || p.id === 'p_host')?.nickname || primary.hostNickname,
+        hostUid: primary.hostUid || roomA.hostUid || roomB.hostUid || '',
+        hostEmail: primary.hostEmail || roomA.hostEmail || roomB.hostEmail || '',
         notes: primary.notes !== undefined ? primary.notes : (roomA.notes || roomB.notes || ''),
         maxParticipants: Number(primary.maxParticipants) || 20,
         expiryDays: Number(primary.expiryDays) || 7,
@@ -1589,6 +1601,7 @@
       }
 
       state.event.passcodeUnlocked = !mergedRoom.passcode || isHostViewer || prevUnlocked;
+      syncCurrentMemberPreferenceToActiveRoom();
       saveRoomToStorage(state.event, true);
       renderRoom();
 
@@ -1747,12 +1760,25 @@
       const userEmail = (state.user.email || '').trim();
       const userUid = (state.user.uid || '').trim();
       const actorId = typeof currentActorId === 'function' ? currentActorId() : null;
+      const isHostViewer = typeof isRoomHostViewer === 'function' && isRoomHostViewer(state.event);
       let touched = false;
+
+      if (isHostViewer) {
+        if (userUid && !state.event.hostUid) {
+          state.event.hostUid = userUid;
+          touched = true;
+        }
+        if (userEmail && !state.event.hostEmail) {
+          state.event.hostEmail = userEmail;
+          touched = true;
+        }
+      }
 
       state.event.participants.forEach(p => {
         if (!p) return;
         const isMatch = (actorId && actorId !== 'p_new_visitor' && p.id === actorId) ||
                         (userUid && p.memberUid === userUid) ||
+                        (p.isHost && isHostViewer) ||
                         (p.isHost && userUid && state.event.hostUid === userUid);
         if (isMatch) {
           if (p.isMember !== true || p.memberEmail !== userEmail || p.memberUid !== userUid || p.receiveFinalizedEmail !== receiveEmail) {
@@ -3864,16 +3890,25 @@
       if (!ev || !Array.isArray(ev.participants)) return [];
       const recipients = [];
       const seenEmails = new Set();
+      const isCurrentUserHost = typeof isRoomHostViewer === 'function' && isRoomHostViewer(ev);
 
       ev.participants.forEach(p => {
         if (!p || p.id === 'p_new_visitor') return;
         let email = (p.memberEmail || '').trim();
-        if (!email && p.isHost && ev.hostEmail) {
-          email = String(ev.hostEmail).trim();
+        if (!email && p.isHost) {
+          if (ev.hostEmail) {
+            email = String(ev.hostEmail).trim();
+          } else if (isCurrentUserHost && state.isMember && state.user?.email) {
+            email = String(state.user.email).trim();
+          }
         }
-        const isMember = Boolean(p.isMember || email || (p.isHost && ev.hostUid));
+        const isMember = Boolean(p.isMember || email || (p.isHost && (ev.hostUid || (isCurrentUserHost && state.isMember))));
         if (!isMember || !email) return;
-        const wantsEmail = p.receiveFinalizedEmail !== undefined ? Boolean(p.receiveFinalizedEmail) : true;
+
+        let wantsEmail = p.receiveFinalizedEmail !== undefined ? Boolean(p.receiveFinalizedEmail) : true;
+        if (p.isHost && isCurrentUserHost && state.isMember && state.user && p.receiveFinalizedEmail === undefined) {
+          wantsEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
+        }
         if (!wantsEmail) return;
 
         const lower = email.toLowerCase();
@@ -4048,12 +4083,6 @@
 
       const recipients = getFinalizedEmailRecipients(ev);
       if (recipients.length > 0) {
-        ev.emailNotifiedRecipients = recipients.map(r => ({
-          nickname: r.nickname,
-          email: r.email,
-          isHost: r.isHost
-        }));
-        ev.emailNotifiedAt = new Date().toISOString();
         dispatchFinalizedGmailNotifications(ev);
       }
 
@@ -4735,6 +4764,7 @@
           state.viewerMode = identity.mode;
           const nickInput = document.getElementById('myNicknameInput');
           if (nickInput) nickInput.value = identity.nickname;
+          syncCurrentMemberPreferenceToActiveRoom();
         }
       }
       renderRoom();
