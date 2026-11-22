@@ -9,7 +9,7 @@
   <meta name="author" content="Cassell Teng" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
   <meta name="theme-color" content="#FAF9F5" />
-  <link rel="canonical" href="https://yachiyao.github.io/SquadUp/" />
+  <link rel="canonical" href="https://squad-up-tw.vercel.app/" />
   <link rel="manifest" href="./site.webmanifest" />
   <link rel="icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="shortcut icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
@@ -20,7 +20,7 @@
   <meta property="og:site_name" content="揪一下 Squad Up" />
   <meta property="og:title" content="揪一下 Squad Up | 線上即時聚會協調・免費揪團約時間工具" />
   <meta property="og:description" content="免註冊即可發起！用一個連結或 QR Code 分享到 LINE、Discord，透過月曆熱度圖與地點投票快速敲定聚會時間與地點，成團後支援 Google 日曆匯出與 E-Mail 通知。" />
-  <meta property="og:url" content="https://yachiyao.github.io/SquadUp/" />
+  <meta property="og:url" content="https://squad-up-tw.vercel.app/" />
   <meta property="og:image" content="https://duk.tw/4pgHe5.png" />
   <meta property="og:image:alt" content="揪一下 Squad Up 線上即時聚會協調工具" />
   <meta property="og:locale" content="zh_TW" />
@@ -41,19 +41,19 @@
     "@graph": [
       {
         "@type": "WebSite",
-        "@id": "https://yachiyao.github.io/SquadUp/#website",
+        "@id": "https://squad-up-tw.vercel.app/#website",
         "name": "揪一下 Squad Up",
         "alternateName": ["揪一下", "Squad Up", "スコッドアップ"],
-        "url": "https://yachiyao.github.io/SquadUp/",
+        "url": "https://squad-up-tw.vercel.app/",
         "inLanguage": ["zh-TW", "en", "ja"],
         "description": "免費且免註冊的線上即時聚會協調工具，協助主辦人與朋友快速整合可參加時段與投票決定聚會地點。"
       },
       {
         "@type": "WebApplication",
-        "@id": "https://yachiyao.github.io/SquadUp/#webapp",
+        "@id": "https://squad-up-tw.vercel.app/#webapp",
         "name": "揪一下 Squad Up",
         "alternateName": ["揪一下", "Squad Up"],
-        "url": "https://yachiyao.github.io/SquadUp/",
+        "url": "https://squad-up-tw.vercel.app/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "All",
         "browserRequirements": "Requires JavaScript",
@@ -80,7 +80,7 @@
       },
       {
         "@type": "FAQPage",
-        "@id": "https://yachiyao.github.io/SquadUp/#faq",
+        "@id": "https://squad-up-tw.vercel.app/#faq",
         "mainEntity": [
           {
             "@type": "Question",
@@ -1144,7 +1144,7 @@
       return code;
     }
 
-    const PUBLIC_WEB_URL = 'https://yachiyao.github.io/SquadUp/';
+    const PUBLIC_WEB_URL = 'https://squad-up-tw.vercel.app/';
 
     function isLocalEnvironment() {
       const proto = window.location.protocol;
@@ -2283,7 +2283,7 @@
       }
       // Fallback only if opened via local file:// protocol where browser blocks OAuth popups
       if (window.location.protocol === 'file:') {
-        showToast('💡 本機 file:// 模式無法彈出 Google 認證視窗，請透過 https://yachiyao.github.io/SquadUp/ 或 localhost 開啟');
+        showToast('💡 本機 file:// 模式無法彈出 Google 認證視窗，請透過 https://squad-up-tw.vercel.app/ 或 localhost 開啟');
       }
     }
 

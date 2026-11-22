@@ -5,4 +5,4 @@ Disallow: /docs/
 Disallow: /app/
 Disallow: /gas/
 
-Sitemap: https://yachiyao.github.io/SquadUp/sitemap.xml
+Sitemap: https://squad-up-tw.vercel.app/sitemap.xml

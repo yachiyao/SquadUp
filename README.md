@@ -1,8 +1,8 @@
-# 揪一下（Squad Up / スコッドアップ）v1.11.0
+# 揪一下（Squad Up / スコッドアップ）v1.11.1
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-22。最新單檔 HTML 原型為 v1.11.0，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-22。最新單檔 HTML 原型為 v1.11.1，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
 
 ## v1.11.0 更新重點
 
@@ -113,6 +113,9 @@ npm run db:local
 - [競品研究](docs/research/competitors/)
 
 ## 版本紀錄 (Changelog)
+
+### v1.11.1 (2026-11-22)
+- **調整**：將 HTML 單檔版網站之主網域對齊為 Vercel 正式站台網址 `https://squad-up-tw.vercel.app/`，同步更新 `robots.txt`、`sitemap.xml` 與 `index.html` 的 Canonical、Open Graph URL、JSON-LD 結構化資料網址與 `PUBLIC_WEB_URL` 分享連結預設網域。
 
 ### v1.11.0 (2026-11-22)
 - **新增**：建立根目錄 `robots.txt`、`sitemap.xml` 與 `site.webmanifest`，並為 `index.html` 加入 SEO Meta 標籤（Description、Keywords、Canonical、Open Graph、Twitter Card）與 `WebSite`／`WebApplication`／`FAQPage` JSON-LD 結構化資料。
