@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /version/
+Disallow: /docs/
+Disallow: /app/
+Disallow: /gas/
+
+Sitemap: https://yachiyao.github.io/SquadUp/sitemap.xml

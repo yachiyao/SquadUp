@@ -15,19 +15,49 @@ export const viewport: Viewport = {
   themeColor: '#FAF9F5',
 };
 
+const OG_LOCALE: Record<string, string> = {
+  'zh-TW': 'zh_TW',
+  en: 'en_US',
+  ja: 'ja_JP',
+};
+
 export async function generateMetadata({ params }: { params: { locale: string } }): Promise<Metadata> {
   const t = await getTranslations({ locale: params.locale, namespace: 'meta' });
+  const ogLocale = OG_LOCALE[params.locale] ?? 'zh_TW';
+  const alternateLocale = Object.values(OG_LOCALE).filter((l) => l !== ogLocale);
+
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
     title: { default: t('title'), template: `%s | ${t('appName')}` },
     description: t('description'),
     applicationName: t('appName'),
+    keywords: ['揪一下', 'Squad Up', 'スコッドアップ', '線上揪團', '聚會協調', '約時間工具', 'group scheduling'],
+    authors: [{ name: 'Cassell Teng' }],
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+    },
     icons: {
       icon: 'https://duk.tw/4pgHe5.png',
       shortcut: 'https://duk.tw/4pgHe5.png',
       apple: 'https://duk.tw/4pgHe5.png',
     },
-    openGraph: { siteName: t('appName'), title: t('title'), description: t('description'), type: 'website' },
+    openGraph: {
+      siteName: t('appName'),
+      title: t('title'),
+      description: t('description'),
+      type: 'website',
+      locale: ogLocale,
+      alternateLocale,
+      images: [{ url: 'https://duk.tw/4pgHe5.png', alt: t('appName') }],
+    },
+    twitter: {
+      card: 'summary',
+      title: t('title'),
+      description: t('description'),
+      images: ['https://duk.tw/4pgHe5.png'],
+    },
   };
 }
 

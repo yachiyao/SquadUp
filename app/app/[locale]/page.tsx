@@ -1,18 +1,51 @@
+import type { Metadata } from 'next';
 import { CalendarHeart, Link2, MapPinned, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { JoinByCode } from '@/components/home/JoinByCode';
 import { RecentRooms } from '@/components/home/RecentRooms';
 import { buttonVariants } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
-import { cn } from '@/lib/utils';
+import { routing } from '@/i18n/routing';
+import { appOrigin, cn } from '@/lib/utils';
 
 const DEMO = [0, 1, 2, 1, 0, 3, 4, 1, 2, 4, 5, 3, 0, 2, 3, 5, 4, 1, 0, 1, 2];
 const DEMO_COLORS = ['#F5F5F4', '#DDF1E5', '#B4DFC6', '#7CC29E', '#3F9C71', '#1F5C42'];
 
+function localeHomePath(locale: string): string {
+  return locale === routing.defaultLocale ? '/' : `/${locale}`;
+}
+
+export async function generateMetadata({ params }: { params: { locale: string } }): Promise<Metadata> {
+  const t = await getTranslations({ locale: params.locale, namespace: 'meta' });
+  const languages = Object.fromEntries(routing.locales.map((l) => [l, localeHomePath(l)]));
+
+  return {
+    alternates: {
+      canonical: localeHomePath(params.locale),
+      languages: { ...languages, 'x-default': '/' },
+    },
+    openGraph: { url: localeHomePath(params.locale), title: t('title'), description: t('description') },
+  };
+}
+
 export default function HomePage({ params }: { params: { locale: string } }) {
   setRequestLocale(params.locale);
   const t = useTranslations('home');
+  const tm = useTranslations('meta');
+  const baseUrl = appOrigin().replace(/\/$/, '');
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: tm('appName'),
+    url: `${baseUrl}${localeHomePath(params.locale)}`,
+    description: tm('description'),
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'All',
+    inLanguage: params.locale,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'TWD' },
+  };
 
   const features = [
     { icon: CalendarHeart, title: t('f1Title'), body: t('f1Body') },
@@ -22,6 +55,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
 
   return (
     <div className="space-y-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <section className="relative overflow-hidden rounded-4xl bg-white px-5 pb-6 pt-7 shadow-soft">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-peach-100/70" aria-hidden />
         <div className="relative">

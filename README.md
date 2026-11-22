@@ -1,8 +1,14 @@
-# 揪一下（Squad Up / スコッドアップ）v1.10.2
+# 揪一下（Squad Up / スコッドアップ）v1.11.0
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-21。最新單檔 HTML 原型為 v1.10.2，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容已同步更新。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-22。最新單檔 HTML 原型為 v1.11.0，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+
+## v1.11.0 更新重點
+
+- **搜尋引擎最佳化（SEO）與結構化資料建置**：於根目錄新增 `robots.txt`、`sitemap.xml` 與 `site.webmanifest`，並於 `index.html` 補齊 `meta description`、`canonical`、Open Graph、Twitter Card 及 `WebSite`／`WebApplication`／`FAQPage` JSON-LD 結構化資料。
+- **首頁可索引內容與三語系補強**：於 `index.html` 首頁新增四大功能特色、3 步驟使用教學與常見問題（FAQ）區塊（完整支援繁中、英文與日文三語切換及 `?lang=` 參數），並將全頁統一為單一主 `<h1>` 語意階層。
+- **Next.js 全端版（`app/`）SEO 同步強化**：新增 `app/app/robots.ts` 與 `app/app/sitemap.ts`，補齊各語系首頁與建立頁的 `canonical`、`hreflang`、Open Graph／Twitter 標籤及 `WebApplication` JSON-LD，並將私人房間 `/g/[id]` 與會員儀表板 `/dashboard` 設為 `noindex`。
 
 ## v1.10.0 ～ v1.10.2 更新重點
 
@@ -107,6 +113,11 @@ npm run db:local
 - [競品研究](docs/research/competitors/)
 
 ## 版本紀錄 (Changelog)
+
+### v1.11.0 (2026-11-22)
+- **新增**：建立根目錄 `robots.txt`、`sitemap.xml` 與 `site.webmanifest`，並為 `index.html` 加入 SEO Meta 標籤（Description、Keywords、Canonical、Open Graph、Twitter Card）與 `WebSite`／`WebApplication`／`FAQPage` JSON-LD 結構化資料。
+- **新增**：於 `index.html` 首頁新增功能亮點、3 步驟教學與常見問題（FAQ）區塊（支援繁中／英／日三語切換與 `?lang=` 參數），並為 `app/` 新增 `robots.ts`、`sitemap.ts`、各語系頁面中繼資料與 `hreflang`／`canonical` 標記。
+- **調整**：將 `index.html` 非首頁分頁的 `<h1>` 調整為 `<h2>` 以維持單一主 `<h1>` 語意階層，並於 `robots.txt` 排除 `/version/`、`/docs/`、`/app/`、`/gas/` 避免重複內容影響搜尋索引。
 
 ### v1.10.2 (2026-11-21)
 - **修復**：補強舊房間與跨裝置同步時的會員信箱自動補齊機制（`mergeRoomStates`、`loadRoomIntoState` 與 `getFinalizedEmailRecipients`），確保在舊版建立的房間或雲端同步後的房間按下「拍板定案」時，能完整保留並自動補入當前登入主辦人與會員參加者的 Gmail 以觸發 GAS 發信；同時保持房間物件欄位與 `firestore.rules` 白名單完全相容。

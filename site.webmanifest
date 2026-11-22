@@ -1,0 +1,19 @@
+{
+  "name": "揪一下 | Squad Up",
+  "short_name": "揪一下",
+  "description": "免費且免註冊的線上即時聚會協調工具，透過月曆熱度圖、自訂時段與地點投票，快速決定朋友聚會的時間與地點。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAF9F5",
+  "theme_color": "#FAF9F5",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "https://duk.tw/4pgHe5.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

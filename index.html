@@ -3,10 +3,122 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>揪一下 | 線上即時聚會協調</title>
+  <title>揪一下 Squad Up | 線上即時聚會協調・免費揪團約時間工具</title>
+  <meta name="description" content="揪一下（Squad Up）是免費且免註冊的線上即時聚會協調工具。幾分鐘搞定聚會時間與地點：透過月曆熱度圖、自訂自由時段、多地點投票與 QR Code／短連結一鍵分享，輕鬆找出大家都有空的最佳時段並支援成行 E-Mail 與行事曆匯出。" />
+  <meta name="keywords" content="揪一下, Squad Up, スコッドアップ, 線上揪團, 聚會約時間, 聚會協調, 多人約時間, 時間投票, 地點投票, 月曆熱度圖, 免註冊揪團, 行事曆匯出" />
+  <meta name="author" content="Cassell Teng" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="theme-color" content="#FAF9F5" />
+  <link rel="canonical" href="https://yachiyao.github.io/SquadUp/" />
+  <link rel="manifest" href="./site.webmanifest" />
   <link rel="icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="shortcut icon" type="image/png" href="https://duk.tw/4pgHe5.png" />
   <link rel="apple-touch-icon" href="https://duk.tw/4pgHe5.png" />
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="揪一下 Squad Up" />
+  <meta property="og:title" content="揪一下 Squad Up | 線上即時聚會協調・免費揪團約時間工具" />
+  <meta property="og:description" content="免註冊即可發起！用一個連結或 QR Code 分享到 LINE、Discord，透過月曆熱度圖與地點投票快速敲定聚會時間與地點，成團後支援 Google 日曆匯出與 E-Mail 通知。" />
+  <meta property="og:url" content="https://yachiyao.github.io/SquadUp/" />
+  <meta property="og:image" content="https://duk.tw/4pgHe5.png" />
+  <meta property="og:image:alt" content="揪一下 Squad Up 線上即時聚會協調工具" />
+  <meta property="og:locale" content="zh_TW" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta property="og:locale:alternate" content="ja_JP" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="揪一下 Squad Up | 線上即時聚會協調・免費揪團約時間工具" />
+  <meta name="twitter:description" content="免費且免註冊的線上聚會時間與地點協調工具：月曆熱度圖、Top 3 最佳時段、地點投票、QR Code 分享與行事曆匯出。" />
+  <meta name="twitter:image" content="https://duk.tw/4pgHe5.png" />
+  <meta name="twitter:image:alt" content="揪一下 Squad Up Logo" />
+
+  <!-- Structured Data (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://yachiyao.github.io/SquadUp/#website",
+        "name": "揪一下 Squad Up",
+        "alternateName": ["揪一下", "Squad Up", "スコッドアップ"],
+        "url": "https://yachiyao.github.io/SquadUp/",
+        "inLanguage": ["zh-TW", "en", "ja"],
+        "description": "免費且免註冊的線上即時聚會協調工具，協助主辦人與朋友快速整合可參加時段與投票決定聚會地點。"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://yachiyao.github.io/SquadUp/#webapp",
+        "name": "揪一下 Squad Up",
+        "alternateName": ["揪一下", "Squad Up"],
+        "url": "https://yachiyao.github.io/SquadUp/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": ["zh-TW", "en", "ja"],
+        "image": "https://duk.tw/4pgHe5.png",
+        "description": "線上即時聚會協調與揪團投票服務：支援月曆熱度圖、自訂 30 分鐘自由時段、Top 3 最佳時段排行、多地點單選投票、QR Code 邀請、Google 日曆與 .ics 匯出及會員成行 E-Mail 通知。",
+        "featureList": [
+          "免註冊即可發起聚會揪團與參與投票",
+          "2 個月月曆熱度圖與雙滑桿自訂自由時段",
+          "自動計算 Top 3 最多人有空的最佳時段",
+          "最多 3 個候選地點單選投票與 Google Maps 連結",
+          "精簡短連結與專屬 QR Code 生成下載",
+          "拍板定案後支援 Google 日曆與 .ics 匯出及 Gmail 成行通知"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "TWD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Cassell Teng"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://yachiyao.github.io/SquadUp/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "使用「揪一下 Squad Up」需要註冊帳號或付費嗎？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "完全免費且免註冊即可使用！無論是發起揪團的主辦人或受邀投票的朋友，都能直接開啟網頁或點擊分享連結快速填寫有空的時間與投票地點。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "要如何把揪團連結分享到 LINE、Discord 或給朋友？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "建立揪團房間後，系統會自動產生專屬短連結（例如 #room=SQ-XXXX）、房間代碼與 QR Code，點擊「分享連結」或「複製連結」即可貼到 LINE、Discord 或任何聊天室。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "登入 Google 會員有什麼額外功能？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "登入 Google 會員可將活動連結有效天數延長至 30 天、儲存常用生活圈地點快捷帶入、跨裝置同步歷史揪團紀錄、使用剔除參加者管理功能，並在拍板定案時自動寄送成行通知信到會員 Gmail。"
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "決定好聚會時間和地點後，可以加到手機行事曆嗎？",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "可以！主辦人點擊「拍板定案」鎖定行程後，房間頂部會顯示最終確認卡片，所有人都能一鍵點擊「加入 Google 日曆」或「下載 .ics 行事曆檔」匯入 Apple／Outlook 行事曆。"
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
   <script type="importmap">
     {
       "imports": {
@@ -128,7 +240,7 @@
     <div class="mx-auto flex min-h-16 max-w-xl flex-nowrap items-center justify-between gap-2 px-4 py-3">
       <button onclick="switchView('home')" class="flex min-w-0 flex-1 items-center gap-2.5 text-left focus:outline-none">
         <!-- 網站品牌 LOGO -->
-        <img src="https://duk.tw/4pgHe5.png" alt="揪一下 Squad Up Logo" class="h-10 w-10 shrink-0 rounded-2xl object-cover shadow-sm" />
+        <img src="https://duk.tw/4pgHe5.png" alt="揪一下 Squad Up Logo" width="40" height="40" class="h-10 w-10 shrink-0 rounded-2xl object-cover shadow-sm" />
         <div class="min-w-0 flex-1">
           <span id="brandTitle" class="block truncate text-base font-extrabold leading-tight text-ink">揪一下</span>
           <span id="brandSubtitle" class="block truncate text-[11px] font-medium text-ink-mute">線上即時聚會協調</span>
@@ -312,12 +424,113 @@
           <span class="text-sm font-bold text-brand-600 shrink-0">進入 →</span>
         </button>
       </div>
+
+      <!-- Core Features (SEO & Product Overview) -->
+      <section aria-labelledby="homeFeaturesHeading" class="rounded-3xl bg-white p-5 shadow-soft space-y-3.5">
+        <div>
+          <h2 id="homeFeaturesHeading" class="text-base font-extrabold text-ink">為什麼選擇「揪一下 Squad Up」？</h2>
+          <p class="mt-0.5 text-xs text-ink-mute">專為朋友聚餐、社團活動與團隊約時間打造的免費線上聚會協調工具</p>
+        </div>
+        <div class="grid gap-3">
+          <div class="flex gap-3.5 rounded-2xl border border-stone-100 bg-stone-50/60 p-3.5">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-lg" aria-hidden="true">📅</span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-extrabold text-ink">月曆熱度圖與自訂自由時段</h3>
+              <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">支援全天／上午／下午／晚上快速勾選與雙滑桿 30 分鐘自訂時段，顏色越深代表越多人有空，自動列出 Top 3 最佳時段。</p>
+            </div>
+          </div>
+          <div class="flex gap-3.5 rounded-2xl border border-stone-100 bg-stone-50/60 p-3.5">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-peach-50 text-lg" aria-hidden="true">📍</span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-extrabold text-ink">多地點單選投票與地圖連結</h3>
+              <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">可設定最多 3 個候選聚會地點，受邀者一鍵投票並可直接開啟 Google Maps 查看位置。</p>
+            </div>
+          </div>
+          <div class="flex gap-3.5 rounded-2xl border border-stone-100 bg-stone-50/60 p-3.5">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-lg" aria-hidden="true">🔗</span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-extrabold text-ink">免註冊短連結與 QR Code 邀請</h3>
+              <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">建立後立即生成精簡短連結與專屬 QR Code，一鍵分享到 LINE、Discord 或 Telegram，朋友免下載、免註冊就能參與。</p>
+            </div>
+          </div>
+          <div class="flex gap-3.5 rounded-2xl border border-stone-100 bg-stone-50/60 p-3.5">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-peach-50 text-lg" aria-hidden="true">📧</span>
+            <div class="min-w-0">
+              <h3 class="text-sm font-extrabold text-ink">拍板定案與行事曆／Gmail 通知</h3>
+              <p class="mt-0.5 text-xs leading-relaxed text-ink-soft">主辦人確認最終時間與地點後，全員可一鍵加入 Google 日曆或下載 .ics 檔，登入會員還會自動收到成行通知信。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works -->
+      <section aria-labelledby="homeStepsHeading" class="rounded-3xl bg-white p-5 shadow-soft space-y-3">
+        <h2 id="homeStepsHeading" class="text-base font-extrabold text-ink">3 步驟輕鬆喬好聚會</h2>
+        <ol class="space-y-2.5 text-xs text-ink-soft">
+          <li class="flex items-start gap-3 rounded-2xl bg-cream/80 p-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-extrabold text-white">1</span>
+            <div class="min-w-0">
+              <p class="font-extrabold text-ink">建立揪團活動</p>
+              <p class="mt-0.5 leading-relaxed">填寫活動主題、暱稱、活動備註與候選地點，10 秒即可生成專屬揪團房間。</p>
+            </div>
+          </li>
+          <li class="flex items-start gap-3 rounded-2xl bg-cream/80 p-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-extrabold text-white">2</span>
+            <div class="min-w-0">
+              <p class="font-extrabold text-ink">分享連結或 QR Code 給朋友</p>
+              <p class="mt-0.5 leading-relaxed">將房間代碼或短連結傳送到聊天群組，大家各自點選月曆上有空的時段並投票地點。</p>
+            </div>
+          </li>
+          <li class="flex items-start gap-3 rounded-2xl bg-cream/80 p-3">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-extrabold text-white">3</span>
+            <div class="min-w-0">
+              <p class="font-extrabold text-ink">查看 Top 3 熱度並拍板定案</p>
+              <p class="mt-0.5 leading-relaxed">根據即時重疊人數鎖定最佳時間與最高票地點，一鍵匯出行事曆完成約定。</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- FAQ Section -->
+      <section aria-labelledby="homeFaqHeading" class="rounded-3xl bg-white p-5 shadow-soft space-y-2.5">
+        <h2 id="homeFaqHeading" class="text-base font-extrabold text-ink">常見問題</h2>
+        <div class="space-y-2">
+          <details class="group rounded-2xl border border-stone-200/80 bg-stone-50/50 px-3.5 py-2.5">
+            <summary class="cursor-pointer list-none font-bold text-xs text-ink flex items-center justify-between gap-2">
+              <span>使用「揪一下 Squad Up」需要註冊帳號或付費嗎？</span>
+              <span class="text-ink-mute transition group-open:rotate-180">▾</span>
+            </summary>
+            <p class="mt-2 text-xs leading-relaxed text-ink-soft">完全免費且免註冊即可使用！無論是發起揪團的主辦人或受邀投票的朋友，都能直接開啟網頁或點擊分享連結快速填寫有空的時間與投票地點。</p>
+          </details>
+          <details class="group rounded-2xl border border-stone-200/80 bg-stone-50/50 px-3.5 py-2.5">
+            <summary class="cursor-pointer list-none font-bold text-xs text-ink flex items-center justify-between gap-2">
+              <span>要如何把揪團連結分享到 LINE、Discord 或給朋友？</span>
+              <span class="text-ink-mute transition group-open:rotate-180">▾</span>
+            </summary>
+            <p class="mt-2 text-xs leading-relaxed text-ink-soft">建立揪團房間後，系統會自動產生專屬短連結、房間代碼與 QR Code，點擊「分享連結」或「複製連結」即可貼到 LINE、Discord 或任何聊天室。</p>
+          </details>
+          <details class="group rounded-2xl border border-stone-200/80 bg-stone-50/50 px-3.5 py-2.5">
+            <summary class="cursor-pointer list-none font-bold text-xs text-ink flex items-center justify-between gap-2">
+              <span>登入 Google 會員有什麼額外功能？</span>
+              <span class="text-ink-mute transition group-open:rotate-180">▾</span>
+            </summary>
+            <p class="mt-2 text-xs leading-relaxed text-ink-soft">登入 Google 會員可將活動連結有效天數延長至 30 天、儲存常用生活圈地點快捷帶入、跨裝置同步歷史揪團紀錄、使用剔除參加者管理功能，並在拍板定案時自動寄送成行通知信到會員 Gmail。</p>
+          </details>
+          <details class="group rounded-2xl border border-stone-200/80 bg-stone-50/50 px-3.5 py-2.5">
+            <summary class="cursor-pointer list-none font-bold text-xs text-ink flex items-center justify-between gap-2">
+              <span>決定好聚會時間和地點後，可以加到手機行事曆嗎？</span>
+              <span class="text-ink-mute transition group-open:rotate-180">▾</span>
+            </summary>
+            <p class="mt-2 text-xs leading-relaxed text-ink-soft">可以！主辦人點擊「拍板定案」鎖定行程後，房間頂部會顯示最終確認卡片，所有人都能一鍵點擊「加入 Google 日曆」或「下載 .ics 行事曆檔」匯入 Apple／Outlook 行事曆。</p>
+          </details>
+        </div>
+      </section>
     </section>
 
     <!-- ==================== VIEW 2: CREATE EVENT ==================== -->
     <section id="view-create" class="hidden space-y-4">
       <div class="px-1">
-        <h1 class="text-2xl font-extrabold text-ink">發起新揪團</h1>
+        <h2 class="text-2xl font-extrabold text-ink">發起新揪團</h2>
         <p class="text-sm text-ink-soft">填好基本資訊，主辦人建立後自動占 1 個名額。</p>
       </div>
 
@@ -493,7 +706,7 @@
                 🔒 已拍板定案
               </span>
             </div>
-            <h1 id="roomTitle" class="text-xl font-extrabold text-ink break-words">--</h1>
+            <h2 id="roomTitle" class="text-xl font-extrabold text-ink break-words">--</h2>
             <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
               <p class="text-sm text-ink-soft">主辦人：<span id="roomHost" class="font-semibold text-ink">--</span></p>
               <button
@@ -709,7 +922,7 @@
       <div class="rounded-3xl bg-white p-5 shadow-soft space-y-3">
         <div class="flex items-start justify-between gap-2">
           <div>
-            <h1 class="text-xl font-extrabold text-ink">我的揪團紀錄</h1>
+            <h2 class="text-xl font-extrabold text-ink">我的揪團紀錄</h2>
             <p class="text-xs text-ink-mute">註冊成會員之後即可以跨裝置管理活動。</p>
           </div>
           <button onclick="renderDashboard(true)" class="shrink-0 rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-bold text-ink-soft hover:bg-stone-200 transition">
@@ -811,7 +1024,7 @@
       </button>
 
       <!-- Top Group Icon Badge -->
-      <img src="https://duk.tw/4pgHe5.png" alt="Squad Up Logo" class="mx-auto h-16 w-16 rounded-[1.25rem] object-cover shadow-sm" />
+      <img src="https://duk.tw/4pgHe5.png" alt="Squad Up Logo" width="64" height="64" class="mx-auto h-16 w-16 rounded-[1.25rem] object-cover shadow-sm" />
 
       <!-- Title & Subtitle -->
       <h3 class="mt-5 text-2xl font-extrabold tracking-tight text-[#1E293B]">歡迎使用 Squad Up</h3>
@@ -1634,7 +1847,7 @@
     // ==================== I18N ====================
     const I18N = {
       'zh-TW': {
-        pageTitle: '揪一下 | 線上即時聚會協調',
+        pageTitle: '揪一下 Squad Up | 線上即時聚會協調・免費揪團約時間工具',
         brand: '揪一下',
         subtitle: '線上即時聚會協調',
         badge: '✨ 免註冊即可快速發起',
@@ -4663,7 +4876,34 @@
       ['接收成行 E-Mail 通知','Receive finalized gathering E-Mail notifications','開催確定のE-Mail通知を受け取る'],
       ['當主辦人拍板定案後，自動寄送成行活動詳細內容至會員信箱（僅限登入會員的主辦人與參加者）','When the host finalizes the gathering, automatically email full event details to signed-in member hosts & participants','幹事が確定した際、ログイン会員の主催者・参加者へ確定した詳細内容をメールで自動送信します'],
       ['📧 成行通知','📧 Email notify','📧 確定メール通知'],
-      ['已將成行活動詳細內容直接寄送至登入會員的 Gmail','Directly sent finalized event details to signed-in members\' Gmail','ログイン会員の Gmail へ開催確定の詳細内容を直接送信しました']
+      ['已將成行活動詳細內容直接寄送至登入會員的 Gmail','Directly sent finalized event details to signed-in members\' Gmail','ログイン会員の Gmail へ開催確定の詳細内容を直接送信しました'],
+      ['為什麼選擇「揪一下 Squad Up」？','Why choose Squad Up?','Squad Up が選ばれる理由'],
+      ['專為朋友聚餐、社團活動與團隊約時間打造的免費線上聚會協調工具','A free online scheduling tool built for hangouts, club events, and team meetups','友達との食事、サークル、チームの予定調整を無料で手軽に行えるツール'],
+      ['月曆熱度圖與自訂自由時段','Calendar heatmap & custom time slots','カレンダーヒートマップ＆自由時間帯指定'],
+      ['支援全天／上午／下午／晚上快速勾選與雙滑桿 30 分鐘自訂時段，顏色越深代表越多人有空，自動列出 Top 3 最佳時段。','Pick quick presets (All day, Morning, Afternoon, Evening) or drag 30-min sliders. Darker cells mean more overlap, with Top 3 times ranked automatically.','終日・午前・午後・夜のクイック選択や30分単位のスライダーに対応。参加できる人が多いほど色が濃くなり、トップ3を自動算出します。'],
+      ['多地點單選投票與地圖連結','Place voting & Google Maps links','候補場所の投票＆マップ連携'],
+      ['可設定最多 3 個候選聚會地點，受邀者一鍵投票並可直接開啟 Google Maps 查看位置。','Add up to 3 candidate venues. Invitees can vote with one tap and open Google Maps directly to check the location.','最大3つの候補場所を設定でき、参加者はワンタップで投票したり Google マップで場所を確認できます。'],
+      ['免註冊短連結與 QR Code 邀請','No-signup short links & QR Code','登録不要の短縮リンク＆QRコード招待'],
+      ['建立後立即生成精簡短連結與專屬 QR Code，一鍵分享到 LINE、Discord 或 Telegram，朋友免下載、免註冊就能參與。','Get a compact invite link and QR code instantly. Share on LINE, Discord, or Telegram—friends join with zero sign-up or app download.','作成後すぐに短縮リンクとQRコードを生成。LINE・Discord・Telegram に共有して、友だちは登録不要で参加できます。'],
+      ['拍板定案與行事曆／Gmail 通知','Finalize with Calendar export & Gmail notify','日程確定＆カレンダー保存・Gmail通知'],
+      ['主辦人確認最終時間與地點後，全員可一鍵加入 Google 日曆或下載 .ics 檔，登入會員還會自動收到成行通知信。','Once finalized, everyone can export to Google Calendar or .ics, and signed-in members automatically receive confirmation emails via Gmail.','幹事が確定すると全員が Google カレンダー追加や .ics 保存を行え、ログイン会員には Gmail で通知が届きます。'],
+      ['3 步驟輕鬆喬好聚會','Plan a gathering in 3 steps','3ステップでかんたん調整'],
+      ['建立揪團活動','Create a gathering','募集を作成する'],
+      ['填寫活動主題、暱稱、活動備註與候選地點，10 秒即可生成專屬揪團房間。','Enter a title, nickname, optional notes, and candidate venues to create a room in seconds.','イベント名・ニックネーム・備考・候補場所を入力するだけで、すぐに専用ルームを作成できます。'],
+      ['分享連結或 QR Code 給朋友','Share the link or QR Code','リンクやQRコードを共有'],
+      ['將房間代碼或短連結傳送到聊天群組，大家各自點選月曆上有空的時段並投票地點。','Send the room code or link to your group chat so everyone can pick free slots and vote on places.','ルームコードやリンクをグループチャットに送り、各自が空いている日時と場所を選びます。'],
+      ['查看 Top 3 熱度並拍板定案','Pick from Top 3 & finalize','トップ3から選んで確定'],
+      ['根據即時重疊人數鎖定最佳時間與最高票地點，一鍵匯出行事曆完成約定。','Lock in the most popular time and venue based on live overlap, then export straight to your calendar.','集計された重複人数からベストな日時と場所を確定し、ワンクリックでカレンダーに登録できます。'],
+      ['常見問題','Frequently Asked Questions','よくある質問'],
+      ['使用「揪一下 Squad Up」需要註冊帳號或付費嗎？','Is Squad Up free and usable without an account?','「スコッドアップ（Squad Up）」は登録不要・無料で使えますか？'],
+      ['完全免費且免註冊即可使用！無論是發起揪團的主辦人或受邀投票的朋友，都能直接開啟網頁或點擊分享連結快速填寫有空的時間與投票地點。','Yes! It is 100% free and works without sign-up. Both hosts and invitees can open the page or link to mark availability and vote right away.','はい、完全無料・登録不要でご利用いただけます。幹事も参加者もリンクを開くだけですぐに空き時間や場所を回答できます。'],
+      ['要如何把揪團連結分享到 LINE、Discord 或給朋友？','How do I share the gathering link to LINE or Discord?','LINE や Discord に募集リンクを共有するにはどうすればいいですか？'],
+      ['建立揪團房間後，系統會自動產生專屬短連結（例如 #room=SQ-XXXX）、房間代碼與 QR Code，點擊「分享連結」或「複製連結」即可貼到 LINE、Discord 或任何聊天室。','After creating a room, you get a short invite URL (#room=SQ-XXXX), room code, and QR code. Tap Share or Copy to paste it into LINE, Discord, or any chat.','ルーム作成後に短縮リンク・ルームコード・QRコードが自動生成されます。「リンクを共有」や「リンクをコピー」から簡単に共有できます。'],
+      ['建立揪團房間後，系統會自動產生專屬短連結、房間代碼與 QR Code，點擊「分享連結」或「複製連結」即可貼到 LINE、Discord 或任何聊天室。','After creating a room, you get a short invite URL, room code, and QR code. Tap Share or Copy to paste it into LINE, Discord, or any chat.','ルーム作成後に短縮リンク・ルームコード・QRコードが自動生成されます。「リンクを共有」や「リンクをコピー」から簡単に共有できます。'],
+      ['登入 Google 會員有什麼額外功能？','What extra features do signed-in Google members get?','Google ログインするとどんな機能が追加されますか？'],
+      ['登入 Google 會員可將活動連結有效天數延長至 30 天、儲存常用生活圈地點快捷帶入、跨裝置同步歷史揪團紀錄、使用剔除參加者管理功能，並在拍板定案時自動寄送成行通知信到會員 Gmail。','Signing in with Google extends link validity up to 30 days, saves favorite spots, syncs gathering history across devices, unlocks participant removal, and sends finalized emails to members\' Gmail.','Google でログインすると、リンク有効期間を最大30日に延長でき、よく使う場所の保存、端末間の履歴同期、参加者管理、確定時の Gmail 自動通知が利用できます。'],
+      ['決定好聚會時間和地點後，可以加到手機行事曆嗎？','Can we add the confirmed event to our calendars?','確定した日時と場所をスマホのカレンダーに追加できますか？'],
+      ['可以！主辦人點擊「拍板定案」鎖定行程後，房間頂部會顯示最終確認卡片，所有人都能一鍵點擊「加入 Google 日曆」或「下載 .ics 行事曆檔」匯入 Apple／Outlook 行事曆。','Yes! Once the host finalizes the event, everyone sees a confirmation banner with one-tap Google Calendar and .ics download buttons for Apple/Outlook calendars.','はい！幹事が確定すると上部に確定カードが表示され、全員が Google カレンダー追加や .ics ファイルのダウンロードで予定を登録できます。']
     ];
     const PAGE_TEXT = new Map(PAGE_TRANSLATIONS.map(([zh, en, ja]) => [zh, { en, ja }]));
     const PAGE_ORIGINAL = new WeakMap();
@@ -4750,6 +4990,14 @@
         if (savedUser && (savedUser.email || savedUser.uid)) {
           applyAuthState(savedUser);
         }
+      }
+    } catch (e) {}
+
+    // Apply optional ?lang=en|ja|zh-TW query parameter on initial load
+    try {
+      const initLangParam = new URLSearchParams(window.location.search).get('lang');
+      if (initLangParam && I18N[initLangParam]) {
+        setLang(initLangParam);
       }
     } catch (e) {}
 
