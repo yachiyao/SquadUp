@@ -1,8 +1,8 @@
-# 揪一下（Squad Up / スコッドアップ）v1.11.2
+# 揪一下（Squad Up / スコッドアップ）v1.11.3
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-22。最新單檔 HTML 原型為 v1.11.2，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-22。最新單檔 HTML 原型為 v1.11.3，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
 
 ## v1.11.0 更新重點
 
@@ -113,6 +113,12 @@ npm run db:local
 - [競品研究](docs/research/competitors/)
 
 ## 版本紀錄 (Changelog)
+
+### v1.11.3 (2026-11-22)
+- **修復**：補齊房間額滿提示橫幅標題、底部常駐列額滿狀態與 QR Code 區塊描述文字之英／日文多語系動態切換。
+- **調整**：移除 QR Code 區塊房間標題後方的 `| 揪一下 Squad Up` 中英文副標題。
+- **調整**：移除「你的參加資訊」區塊右上角的視角狀態標籤（`#myStatusBadge`）。
+- **調整**：將房間額滿時的「🈵」字改為驚嘆號圖示 `⚠️`。
 
 ### v1.11.2 (2026-11-22)
 - **新增**：新增 Google Search Console 網站擁有權驗證檔 `google2634df599a7bfc02.html` 至根目錄。
