@@ -1022,6 +1022,18 @@
         使用 Google 帳號輕鬆登入，隨時隨地與隊友、朋友多人即時同步聚會時程。
       </p>
 
+      <!-- In-App Browser (LINE / FB / IG) External Browser Notice -->
+      <div id="inAppBrowserNotice" class="hidden mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-left text-xs text-amber-900 space-y-2">
+        <div class="flex items-start gap-2">
+          <span class="text-base leading-none">⚠️</span>
+          <p class="font-bold leading-relaxed">偵測到您正在使用 App 內建瀏覽器（如 LINE / IG / FB），Google 官方安全政策不支援於內建瀏覽器登入。</p>
+        </div>
+        <button type="button" onclick="openInExternalBrowser()" class="flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 text-xs font-extrabold text-white shadow-sm hover:bg-amber-700 active:scale-95 transition">
+          <span>🌐</span>
+          <span>一鍵以系統預設瀏覽器（Safari / Chrome）開啟</span>
+        </button>
+      </div>
+
       <!-- Google Sign-In Button (Launches Native Google Account Chooser Popup) -->
       <button type="button" id="googleWelcomeSignInBtn" onclick="triggerGooglePopupSignIn()" class="mt-6 flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-white px-6 text-base font-extrabold text-[#1E293B] shadow-sm hover:bg-stone-50 active:scale-[.98] transition">
         <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -1031,6 +1043,12 @@
           <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.6l3.98 3.09c.95-2.85 3.6-4.94 6.73-4.94z"/>
         </svg>
         <span>使用 Google 帳號登入</span>
+      </button>
+
+      <!-- Same-Tab Redirect Fallback Button (For browsers that block popups) -->
+      <button type="button" id="googleRedirectFallbackBtn" onclick="triggerGoogleRedirectSignIn()" class="mt-2.5 inline-flex items-center justify-center gap-1 text-xs font-bold text-brand-700 hover:text-brand-800 hover:underline py-1 transition">
+        <span>🔄</span>
+        <span>瀏覽器阻擋彈窗？點此改用「同頁跳轉登入」</span>
       </button>
 
       <!-- Divider -->
@@ -2423,10 +2441,63 @@
       }, 450);
     }
 
+    const PENDING_REDIRECT_AUTH_KEY = 'squadup_pending_redirect_auth_v1';
+
+    function detectInAppBrowser() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      const isLine = /\bLine\//i.test(ua);
+      const isFbIg = /\b(FBAN|FBAV|Instagram)\b/i.test(ua);
+      const isWeChat = /\bMicroMessenger\//i.test(ua);
+      const isThreads = /\bBarcelona\b/i.test(ua);
+      return {
+        isInApp: Boolean(isLine || isFbIg || isWeChat || isThreads),
+        isLine,
+        isFbIg,
+        isWeChat,
+        isThreads
+      };
+    }
+
+    function openInExternalBrowser() {
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.get('openExternalBrowser') !== '1') {
+        currentUrl.searchParams.set('openExternalBrowser', '1');
+      }
+      const targetHref = currentUrl.toString();
+      const ua = navigator.userAgent || '';
+      const isAndroid = /Android/i.test(ua);
+      const env = detectInAppBrowser();
+
+      // 1. LINE supports ?openExternalBrowser=1 natively on both iOS and Android
+      if (env.isLine) {
+        window.location.href = targetHref;
+        return;
+      }
+
+      // 2. On Android In-App browsers (IG / FB / WeChat), try Chrome intent:// scheme to break out to system browser
+      if (isAndroid && /^https?:\/\//i.test(targetHref)) {
+        const noScheme = targetHref.replace(/^https?:\/\//i, '');
+        const scheme = /^https:\/\//i.test(targetHref) ? 'https' : 'http';
+        window.location.href = `intent://${noScheme}#Intent;scheme=${scheme};action=android.intent.action.VIEW;end`;
+        return;
+      }
+
+      // 3. Fallback: copy URL and prompt user to open in Safari / Chrome
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(window.location.href).catch(() => {});
+      }
+      showToast('💡 已複製網址！請點選右上角或右下角「⋯」選單，選擇「以預設瀏覽器（Safari / Chrome）開啟」即可登入');
+    }
+
     function openGoogleAccountModal() {
       closeMemberMenu();
       const modal = document.getElementById('googleAccountModal');
       if (!modal) return;
+      const inAppNotice = document.getElementById('inAppBrowserNotice');
+      if (inAppNotice) {
+        const env = detectInAppBrowser();
+        inAppNotice.classList.toggle('hidden', !env.isInApp);
+      }
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     }
@@ -2440,6 +2511,9 @@
 
     function completeGoogleSignIn(chosenUser) {
       if (!chosenUser) return;
+      try {
+        localStorage.removeItem(PENDING_REDIRECT_AUTH_KEY);
+      } catch (e) {}
       const profile = loadMemberProfileForUser(chosenUser);
       chosenUser.preferredNickname = profile.nickname || chosenUser.displayName || 'Google 會員';
       chosenUser.livingArea = profile.livingArea || '';
@@ -2463,15 +2537,60 @@
       });
     }
 
+    async function triggerGoogleRedirectSignIn() {
+      if (window.location.protocol === 'file:') {
+        showToast('💡 本機 file:// 模式無法使用 Google 認證，請透過 https://squad-up-tw.vercel.app/ 或 localhost 開啟');
+        return;
+      }
+      const env = detectInAppBrowser();
+      if (env.isLine) {
+        showToast('🌐 正在為您切換至系統預設瀏覽器以完成 Google 登入...');
+        openInExternalBrowser();
+        return;
+      }
+      if (window.FirebaseBridge?.promptGoogleAccountRedirect) {
+        showToast('🔄 正在前往 Google 帳號登入頁面...');
+        const res = await window.FirebaseBridge.promptGoogleAccountRedirect();
+        if (res && res.error === 'auth/unauthorized-domain') {
+          showToast(`⚠️ 網域「${window.location.hostname}」尚未加入 Firebase 授權網域！`);
+        } else if (res && res.error) {
+          showToast(`⚠️ 無法啟動跳轉登入 (${res.error})`);
+        }
+      }
+    }
+
     async function triggerGooglePopupSignIn() {
+      const env = detectInAppBrowser();
+      // If inside LINE in-app browser, automatically jump out to system browser with ?openExternalBrowser=1
+      if (env.isLine) {
+        showToast('🌐 偵測到 LINE 內建瀏覽器，正在為您開啟系統預設瀏覽器...');
+        openInExternalBrowser();
+        return;
+      }
+      // If inside other In-App browsers (IG/FB), popups are often blocked or broken; try redirect directly
+      if (env.isInApp && window.FirebaseBridge?.promptGoogleAccountRedirect) {
+        await triggerGoogleRedirectSignIn();
+        return;
+      }
+
       if (window.FirebaseBridge?.promptGoogleAccountPopup) {
         const res = await window.FirebaseBridge.promptGoogleAccountPopup();
         if (res && res.user) {
           completeGoogleSignIn(res.user);
           return;
         }
+        // Automatically fallback to same-tab redirect when browser blocks the popup!
+        if (res && (
+          res.error === 'auth/popup-blocked' ||
+          res.error === 'auth/cancelled-popup-request' ||
+          res.error === 'auth/operation-not-supported-in-this-environment'
+        )) {
+          showToast('🔄 偵測到瀏覽器阻擋彈窗，自動為您切換為「同頁跳轉登入」...');
+          await triggerGoogleRedirectSignIn();
+          return;
+        }
         if (res && res.error === 'auth/popup-closed-by-user') {
-          showToast('已關閉 Google 帳號選擇視窗');
+          showToast('已關閉 Google 帳號選擇視窗（若彈窗被攔截，可點擊下方「同頁跳轉登入」）');
           return;
         }
         if (res && res.error === 'auth/unauthorized-domain') {
@@ -2479,7 +2598,8 @@
           return;
         }
         if (res && res.error && res.error !== 'auth/file-protocol') {
-          showToast(`⚠️ Google 登入失敗 (${res.error})`);
+          showToast(`⚠️ Google 登入失敗 (${res.error})，正嘗試切換為同頁跳轉登入...`);
+          await triggerGoogleRedirectSignIn();
           return;
         }
       }
@@ -5229,6 +5349,9 @@
       ['歡迎使用 Squad Up','Welcome to Squad Up','Squad Up へようこそ'],
       ['使用 Google 帳號輕鬆登入，隨時隨地與隊友、朋友多人即時同步聚會時程。','Sign in with Google to coordinate gathering times and places in real time with friends and teammates.','Googleアカウントで簡単ログイン。いつでもどこでも友達やメンバーとリアルタイムに日程を調整できます。'],
       ['使用 Google 帳號登入','Sign in with Google','Google アカウントでログイン'],
+      ['瀏覽器阻擋彈窗？點此改用「同頁跳轉登入」','Popup blocked? Sign in via same-tab redirect','ポップアップがブロックされましたか？同じタブでログイン'],
+      ['偵測到您正在使用 App 內建瀏覽器（如 LINE / IG / FB），Google 官方安全政策不支援於內建瀏覽器登入。','You are using an in-app browser (e.g., LINE / IG / FB). Google security policy requires signing in via your default system browser.','アプリ内ブラウザー（LINE / IG / FBなど）が検出されました。Googleのセキュリティ仕様により、標準ブラウザーで開く必要があります。'],
+      ['一鍵以系統預設瀏覽器（Safari / Chrome）開啟','Open in Default Browser (Safari / Chrome)','標準ブラウザー（Safari / Chrome）で開く'],
       ['即時多人協作：變更秒級同步至全體成員','Real-time collaboration: updates sync instantly to everyone','リアルタイム共同調整：変更が全員に即座に反映されます'],
       ['代碼一鍵分享：輸入專屬代碼或連結立即加入','One-click sharing: join instantly with a code or link','コードで簡単共有：専用コードやリンクですぐ参加'],
       ['Firebase 雲端存取：由 Google 安全防護與儲存','Firebase Cloud storage: secured and backed by Google','Firebase クラウド保存：Google による安全な保護と保存'],
@@ -5426,7 +5549,7 @@
   <script type="module">
     import { initializeApp } from "firebase/app";
     import { getAnalytics, isSupported as isAnalyticsSupported } from "firebase/analytics";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
     import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection } from "firebase/firestore";
 
     // Your web app's Firebase configuration (squad-up-42b1a)
@@ -5455,10 +5578,44 @@
     let activeRoomUnsubscribe = null;
     let activeSubscribedRoomId = null;
 
-    // Only restore Firebase Auth session if the user explicitly confirmed sign-in via the Account Chooser
+    // Handle return from same-tab Google Sign-In redirect (signInWithRedirect)
+    getRedirectResult(auth).then((result) => {
+      if (result && result.user) {
+        const mappedUser = {
+          uid: result.user.uid,
+          email: result.user.email || '',
+          displayName: result.user.displayName || (result.user.email ? result.user.email.split('@')[0] : 'Google 會員'),
+          photoURL: result.user.photoURL || '',
+          isMock: false
+        };
+        if (typeof window.completeGoogleSignIn === 'function') {
+          window.completeGoogleSignIn(mappedUser);
+        }
+      }
+    }).catch((err) => {
+      console.warn('Firebase getRedirectResult notice:', err.code, err.message);
+      try { localStorage.removeItem('squadup_pending_redirect_auth_v1'); } catch (e) {}
+    });
+
+    // Only restore Firebase Auth session if the user explicitly confirmed sign-in via the Account Chooser or Redirect flow
     onAuthStateChanged(auth, (firebaseUser) => {
       const confirmedRaw = localStorage.getItem('squadup_active_member_session_v1');
-      if (firebaseUser && confirmedRaw) {
+      const pendingRedirect = localStorage.getItem('squadup_pending_redirect_auth_v1') === '1';
+      if (firebaseUser && pendingRedirect) {
+        const mappedUser = {
+          uid: firebaseUser.uid,
+          displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google 會員'),
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || '',
+          isMock: false
+        };
+        if (typeof window.completeGoogleSignIn === 'function') {
+          window.completeGoogleSignIn(mappedUser);
+        } else {
+          window.applyAuthState(mappedUser);
+          window.FirebaseBridge.fetchCloudRooms();
+        }
+      } else if (firebaseUser && confirmedRaw) {
         const mappedUser = {
           uid: firebaseUser.uid,
           displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Google 會員'),
@@ -5468,7 +5625,7 @@
         };
         window.applyAuthState(mappedUser);
         window.FirebaseBridge.fetchCloudRooms();
-      } else if (firebaseUser && !confirmedRaw) {
+      } else if (firebaseUser && !confirmedRaw && !pendingRedirect) {
         // Prevent silent unconfirmed auto-binding from stale browser auth state
         signOut(auth).catch(() => {});
       }
@@ -5501,6 +5658,25 @@
         } catch (err) {
           console.warn('Firebase Google Account Chooser notice:', err.code, err.message);
           return { user: null, error: err.code || 'auth/popup-error' };
+        }
+      },
+
+      async promptGoogleAccountRedirect() {
+        if (window.location.protocol === 'file:') {
+          return { ok: false, error: 'auth/file-protocol' };
+        }
+        try {
+          try {
+            localStorage.setItem('squadup_pending_redirect_auth_v1', '1');
+          } catch (e) {}
+          await signInWithRedirect(auth, googleProvider);
+          return { ok: true, error: null };
+        } catch (err) {
+          try {
+            localStorage.removeItem('squadup_pending_redirect_auth_v1');
+          } catch (e) {}
+          console.warn('Firebase Google Redirect notice:', err.code, err.message);
+          return { ok: false, error: err.code || 'auth/redirect-error' };
         }
       },
 

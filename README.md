@@ -1,8 +1,8 @@
-# 揪一下（Squad Up / スコッドアップ）v1.11.4
+# 揪一下（Squad Up / スコッドアップ）v1.11.5
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-23。最新單檔 HTML 原型為 v1.11.4，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-23。最新單檔 HTML 原型為 v1.11.5，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
 
 ## v1.11.0 更新重點
 
@@ -113,6 +113,10 @@ npm run db:local
 - [競品研究](docs/research/competitors/)
 
 ## 版本紀錄 (Changelog)
+
+### v1.11.5 (2026-11-23)
+- **新增**：Google 登入新增防擋彈窗自動備援機制（當瀏覽器攔截彈跳視窗時自動切換為 `signInWithRedirect` 同頁跳轉登入），並於登入視窗提供手動「同頁跳轉登入」按鈕。
+- **新增**：新增 LINE／IG／FB 等 App 內建瀏覽器（In-App WebView）智慧偵測與「一鍵以系統預設瀏覽器（Safari / Chrome）開啟」自動跳轉導引（支援 LINE `openExternalBrowser=1` 參數與 Android Intent 喚起外部瀏覽器）。
 
 ### v1.11.4 (2026-11-23)
 - **新增**：會員個人資料設定（常用暱稱、主要生活圈、接收成行 E-Mail 通知偏好與使用語系）新增雲端資料庫雙向同步機制，並依各會員設定之語系（繁體中文、英文、日文）自動寄送對應語系的成行通知信。
