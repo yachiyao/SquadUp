@@ -31,6 +31,18 @@ rules_version = '2';
 //   - participants: list (required, max 50 items) - Joined participants list
 //   - votes: list (required, max 2000 items) - Availability time-slot votes list
 //
+// Collection: users
+// Document ID: {userId} (Firebase Auth UID)
+// Fields:
+//   - uid: string (optional, immutable, matches userId and request.auth.uid, 1..128 chars) - Member UID
+//   - email: string (optional, 0..254 chars) - Member email address (PII, owner-only access)
+//   - displayName: string (optional, 0..100 chars) - Auth provider display name
+//   - nickname: string (optional, 0..100 chars) - Preferred nickname
+//   - livingArea: string (optional, 0..100 chars) - Primary living area
+//   - lang: string (optional, 0..16 chars) - Preferred UI language ('zh-TW', 'en', 'ja')
+//   - receiveFinalizedEmail: bool (optional) - Whether to receive finalized gathering email notifications
+//   - updatedAt: string or number (optional) - Last modification timestamp (ISO string or epoch ms)
+//
 // ===============================================================
 
 service cloud.firestore {
@@ -150,6 +162,30 @@ service cloud.firestore {
         isValidList(data.votes, 2000);
     }
 
+    function isValidUserProfile(data, userId) {
+      let allowedFields = [
+        'uid',
+        'email',
+        'displayName',
+        'nickname',
+        'livingArea',
+        'lang',
+        'receiveFinalizedEmail',
+        'updatedAt'
+      ];
+
+      return hasOnlyAllowedFields(allowedFields) &&
+        (!('uid' in data) || data.uid == userId) &&
+        isValidOptionalString('uid', 1, 128) &&
+        isValidOptionalString('email', 0, 254) &&
+        isValidOptionalString('displayName', 0, 100) &&
+        isValidOptionalString('nickname', 0, 100) &&
+        isValidOptionalString('livingArea', 0, 100) &&
+        isValidOptionalString('lang', 0, 16) &&
+        (!('receiveFinalizedEmail' in data) || data.receiveFinalizedEmail is bool) &&
+        (!('updatedAt' in data) || data.updatedAt is number || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
     // ===============================================================
     // Collection Rules: /rooms/{roomId}
     // ===============================================================
@@ -169,6 +205,20 @@ service cloud.firestore {
         'hostUid' in resource.data &&
         resource.data.hostUid != '' &&
         resource.data.hostUid == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Collection Rules: /users/{userId}
+    // ===============================================================
+    // Member profile preferences (nickname, livingArea, lang, email opt-in).
+    // Strictly owner-only read/write to protect PII (email, livingArea).
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create, update: if isOwner(userId) &&
+        isValidUserProfile(request.resource.data, userId);
+
+      allow delete: if isOwner(userId);
     }
 
     // ===============================================================

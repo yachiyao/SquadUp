@@ -317,13 +317,11 @@
 
               <div>
                 <label for="profileAreaInput" class="mb-1 block text-xs font-bold text-ink">主要生活圈</label>
-                <input id="profileAreaInput" type="text" maxlength="32" placeholder="輸入地區，例如：台北大安區、新北板橋" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-xs font-semibold text-ink focus:border-brand-500 focus:outline-none" />
-                <div class="mt-1.5 flex flex-wrap gap-1">
-                  <button type="button" onclick="pickLivingAreaTag('台北大安區')" class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">台北大安區</button>
-                  <button type="button" onclick="pickLivingAreaTag('台北信義區')" class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">台北信義區</button>
-                  <button type="button" onclick="pickLivingAreaTag('新北板橋區')" class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">新北板橋區</button>
-                  <button type="button" onclick="pickLivingAreaTag('台中西屯區')" class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">台中西屯區</button>
-                  <button type="button" onclick="pickLivingAreaTag('高雄左營區')" class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">高雄左營區</button>
+                <input id="profileAreaInput" type="text" maxlength="32" placeholder="輸入地區，例如：台北市、台中市、高雄市" class="h-10 w-full rounded-xl border border-stone-200 px-3 text-xs font-semibold text-ink focus:border-brand-500 focus:outline-none" />
+                <div id="livingAreaTagsContainer" class="mt-1.5 flex flex-wrap gap-1">
+                  <button type="button" onclick="pickLivingAreaTag('台北市')" class="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">台北市</button>
+                  <button type="button" onclick="pickLivingAreaTag('台中市')" class="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">台中市</button>
+                  <button type="button" onclick="pickLivingAreaTag('高雄市')" class="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">高雄市</button>
                 </div>
                 <p class="mt-1 text-[11px] text-ink-mute">未來將用於推送生活圈附近的揪團活動</p>
               </div>
@@ -917,14 +915,9 @@
     <!-- ==================== VIEW 4: HISTORY DASHBOARD ==================== -->
     <section id="view-dashboard" class="hidden space-y-4">
       <div class="rounded-3xl bg-white p-5 shadow-soft space-y-3">
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <h2 class="text-xl font-extrabold text-ink">我的揪團紀錄</h2>
-            <p class="text-xs text-ink-mute">註冊成會員之後即可以跨裝置管理活動。</p>
-          </div>
-          <button onclick="renderDashboard(true)" class="shrink-0 rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-bold text-ink-soft hover:bg-stone-200 transition">
-            🔄 同步雲端
-          </button>
+        <div>
+          <h2 class="text-xl font-extrabold text-ink">我的揪團紀錄</h2>
+          <p class="text-xs text-ink-mute">註冊成會員之後即可以跨裝置管理活動。</p>
         </div>
 
         <!-- Account & Storage Status Banner -->
@@ -1187,6 +1180,7 @@
             im: p.isMember ? 1 : 0,
             mu: p.memberUid || '',
             me: p.memberEmail || '',
+            ml: p.memberLang || '',
             re: p.receiveFinalizedEmail !== undefined ? (p.receiveFinalizedEmail ? 1 : 0) : 1
           })),
           v: cleanVotes.map(v => ({ p: v.participantId, d: v.date, s: v.slot }))
@@ -1237,6 +1231,7 @@
             isMember: Boolean(p.im),
             memberUid: p.mu || '',
             memberEmail: p.me || '',
+            memberLang: p.ml || '',
             receiveFinalizedEmail: p.re !== undefined ? Boolean(p.re) : true
           })),
           votes: (compact.v || []).map(v => ({ participantId: v.p, date: v.d, slot: v.s }))
@@ -1297,6 +1292,7 @@
           if (!winner.isMember && older.isMember) winner.isMember = true;
           if (!winner.memberUid && older.memberUid) winner.memberUid = older.memberUid;
           if (!winner.memberEmail && older.memberEmail) winner.memberEmail = older.memberEmail;
+          if (!winner.memberLang && older.memberLang) winner.memberLang = older.memberLang;
           if (winner.receiveFinalizedEmail === undefined && older.receiveFinalizedEmail !== undefined) {
             winner.receiveFinalizedEmail = older.receiveFinalizedEmail;
           }
@@ -1645,12 +1641,19 @@
         if (cloudMatch) return cloudMatch;
       }
       if (state.isMember && state.user) {
-        const myUid = state.user.uid;
+        const myUid = (state.user.uid || '').trim();
+        const myEmail = (state.user.email || '').trim().toLowerCase();
         const myUidActor = myUid ? ('p_u_' + myUid.slice(0, 10)) : null;
         const memberCloudRooms = cloudList
           .filter(r => r && r.id && r.id !== 'friday-hotpot-88' && (
             (myUid && r.hostUid === myUid) ||
-            (r.participants || []).some(p => (myUidActor && p.id === myUidActor) || (myUid && p.uid === myUid))
+            (myEmail && (r.hostEmail || '').trim().toLowerCase() === myEmail) ||
+            (r.participants || []).some(p =>
+              (myUid && p.memberUid === myUid) ||
+              (myEmail && (p.memberEmail || '').trim().toLowerCase() === myEmail) ||
+              (myUidActor && p.id === myUidActor) ||
+              (myUid && p.uid === myUid)
+            )
           ))
           .sort((a, b) => {
             const tsA = typeof a.updatedAt === 'number' ? a.updatedAt : (Date.parse(a.updatedAt || a.createdAt || '') || 0);
@@ -1748,7 +1751,7 @@
 
       // 2. If opened via a share link in a brand-new tab:
       //    - If this browser is the host's browser (testing invite link in Tab 2), start Tab 2 as a new invitee!
-      //    - If this browser is a separate invitee device that already joined this room earlier, restore their saved pid.
+      //    - If this browser is a separate invitee device that already joined this room earlier, restore their saved pid or signed-in member participant record.
       if (openedViaShareLink) {
         if (!isCreatorByLocal && !isCreatorByUid) {
           const savedMyPid = localStorage.getItem('squadup_my_pid_' + room.id);
@@ -1757,6 +1760,18 @@
             if (foundSaved) {
               setTabActorForRoom(room.id, foundSaved.id);
               return { mode: 'existing', actorId: foundSaved.id, nickname: foundSaved.nickname };
+            }
+          }
+          if (state.isMember && state.user) {
+            const myUid = (state.user.uid || '').trim();
+            const myEmail = (state.user.email || '').trim().toLowerCase();
+            const foundMemberP = (room.participants || []).find(p =>
+              (myUid && (p.memberUid === myUid || p.uid === myUid)) ||
+              (myEmail && (p.memberEmail || '').trim().toLowerCase() === myEmail)
+            );
+            if (foundMemberP) {
+              setTabActorForRoom(room.id, foundMemberP.id);
+              return { mode: 'existing', actorId: foundMemberP.id, nickname: foundMemberP.nickname };
             }
           }
         }
@@ -1777,6 +1792,19 @@
         if (foundSaved) {
           setTabActorForRoom(room.id, foundSaved.id);
           return { mode: 'existing', actorId: foundSaved.id, nickname: foundSaved.nickname };
+        }
+      }
+
+      if (state.isMember && state.user) {
+        const myUid = (state.user.uid || '').trim();
+        const myEmail = (state.user.email || '').trim().toLowerCase();
+        const foundMemberP = (room.participants || []).find(p =>
+          (myUid && (p.memberUid === myUid || p.uid === myUid)) ||
+          (myEmail && (p.memberEmail || '').trim().toLowerCase() === myEmail)
+        );
+        if (foundMemberP) {
+          setTabActorForRoom(room.id, foundMemberP.id);
+          return { mode: 'existing', actorId: foundMemberP.id, nickname: foundMemberP.nickname };
         }
       }
 
@@ -1899,9 +1927,38 @@
       setLang(lang);
     }
 
-    function setLang(lang) {
+    const LIVING_AREA_PRESETS = {
+      'zh-TW': ['台北市', '台中市', '高雄市'],
+      en: ['New York', 'London', 'Sydney'],
+      ja: ['東京', '大阪', '名古屋']
+    };
+
+    const LIVING_AREA_PLACEHOLDERS = {
+      'zh-TW': '輸入地區，例如：台北市、台中市、高雄市',
+      en: 'Enter area, e.g., New York, London, Sydney',
+      ja: 'エリアを入力（例：東京、大阪、名古屋）'
+    };
+
+    function renderLivingAreaPresets(lang = state.lang) {
+      const container = document.getElementById('livingAreaTagsContainer');
+      const areaInput = document.getElementById('profileAreaInput');
+      const tags = LIVING_AREA_PRESETS[lang] || LIVING_AREA_PRESETS['zh-TW'];
+      if (areaInput) {
+        areaInput.setAttribute('placeholder', LIVING_AREA_PLACEHOLDERS[lang] || LIVING_AREA_PLACEHOLDERS['zh-TW']);
+      }
+      if (!container) return;
+      container.innerHTML = tags.map(tag => `
+        <button type="button" onclick="pickLivingAreaTag('${tag}')" class="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft hover:bg-peach-100 hover:text-peach-700 transition">${tag}</button>
+      `).join('');
+    }
+
+    function setLang(lang, skipCloudSync = false) {
+      if (!I18N[lang]) lang = 'zh-TW';
       state.lang = lang;
       document.documentElement.lang = lang;
+      try {
+        localStorage.setItem('squadup_preferred_lang_v1', lang);
+      } catch (e) {}
       const badgeMap = { 'zh-TW': '中', en: 'EN', ja: '日' };
       const langBadge = document.getElementById('langCurrentBadge');
       if (langBadge) langBadge.textContent = badgeMap[lang] || '中';
@@ -1928,6 +1985,28 @@
       ['home', 'create', 'room', 'dashboard'].forEach((v, idx) => {
         document.getElementById('tab-' + v).textContent = dict.tabs[idx];
       });
+      renderLivingAreaPresets(lang);
+
+      if (state.isMember && state.user) {
+        state.user.lang = lang;
+        try {
+          const profRaw = localStorage.getItem(getMemberProfileKey(state.user));
+          const profObj = profRaw ? JSON.parse(profRaw) : {};
+          localStorage.setItem(getMemberProfileKey(state.user), JSON.stringify({
+            ...profObj,
+            nickname: state.user.preferredNickname || profObj.nickname || state.user.displayName || '',
+            livingArea: state.user.livingArea !== undefined ? state.user.livingArea : (profObj.livingArea || ''),
+            receiveFinalizedEmail: state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true,
+            lang: lang,
+            updatedAt: Date.now()
+          }));
+          localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(state.user));
+        } catch (e) {}
+        if (!skipCloudSync) {
+          syncCurrentMemberPreferenceToActiveRoom();
+          syncMemberProfileToCloud(state.user);
+        }
+      }
       renderRoom();
     }
 
@@ -1944,8 +2023,116 @@
       return MEMBER_PROFILE_PREFIX + idPart;
     }
 
+    function getMemberProfileCloudTopic(user) {
+      if (!user) return null;
+      const key = (user.uid || user.email || '').toLowerCase().trim().replace(/[^a-z0-9_-]/g, '_');
+      return key ? ('squadup_user_profile_v1_' + key) : null;
+    }
+
+    async function syncMemberProfileToCloud(user) {
+      if (!user || (!user.uid && !user.email)) return;
+      const profilePayload = {
+        uid: user.uid || '',
+        email: user.email || '',
+        displayName: user.displayName || '',
+        nickname: (user.preferredNickname || user.displayName || '').trim(),
+        livingArea: (user.livingArea || '').trim(),
+        lang: (user.lang || state.lang || 'zh-TW').trim(),
+        receiveFinalizedEmail: user.receiveFinalizedEmail !== undefined ? Boolean(user.receiveFinalizedEmail) : true,
+        updatedAt: Date.now()
+      };
+      if (window.FirebaseBridge?.saveUserProfileToCloud && user.uid) {
+        window.FirebaseBridge.saveUserProfileToCloud(user.uid, profilePayload);
+      } else {
+        window.__pendingCloudUserProfile = profilePayload;
+      }
+      const topic = getMemberProfileCloudTopic(user);
+      if (topic) {
+        try {
+          await fetch(`https://ntfy.sh/${topic}`, {
+            method: 'POST',
+            body: JSON.stringify(profilePayload)
+          });
+        } catch (e) {}
+      }
+    }
+
+    async function fetchMemberProfileFromCloud(user) {
+      if (!user || (!user.uid && !user.email)) return null;
+      let best = null;
+      if (window.FirebaseBridge?.loadUserProfileFromCloud && user.uid) {
+        const fsProf = await window.FirebaseBridge.loadUserProfileFromCloud(user.uid);
+        if (fsProf) best = fsProf;
+      }
+      const topic = getMemberProfileCloudTopic(user);
+      if (topic) {
+        try {
+          const res = await fetch(`https://ntfy.sh/${topic}/json?poll=1&since=all&_t=${Date.now()}`, { cache: 'no-store' });
+          if (res.ok) {
+            const text = await res.text();
+            const lines = (text || '').trim().split('\n').filter(Boolean);
+            for (const line of lines) {
+              try {
+                const ev = JSON.parse(line);
+                if (ev.event === 'message' && ev.message) {
+                  const snap = JSON.parse(ev.message);
+                  if (snap && (snap.nickname || snap.livingArea !== undefined || snap.lang)) {
+                    const snapTs = typeof snap.updatedAt === 'number' ? snap.updatedAt : (Date.parse(snap.updatedAt) || 0);
+                    const bestTs = best ? (typeof best.updatedAt === 'number' ? best.updatedAt : (Date.parse(best.updatedAt) || 0)) : 0;
+                    if (!best || snapTs >= bestTs) best = snap;
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+        } catch (e) {}
+      }
+      if (best && state.isMember && state.user && (state.user.uid === user.uid || state.user.email === user.email)) {
+        let localTs = 0;
+        let localParsed = null;
+        try {
+          const raw = localStorage.getItem(getMemberProfileKey(user));
+          if (raw) {
+            localParsed = JSON.parse(raw);
+            localTs = Number(localParsed.updatedAt) || 0;
+          }
+        } catch (e) {}
+        const cloudTs = typeof best.updatedAt === 'number' ? best.updatedAt : (Date.parse(best.updatedAt) || 0);
+        if (cloudTs >= localTs || !localParsed) {
+          const prevNick = getPreferredNickname();
+          if (best.nickname) state.user.preferredNickname = String(best.nickname).trim();
+          if (best.livingArea !== undefined) state.user.livingArea = String(best.livingArea || '').trim();
+          if (best.receiveFinalizedEmail !== undefined) state.user.receiveFinalizedEmail = Boolean(best.receiveFinalizedEmail);
+          if (best.lang && I18N[best.lang]) {
+            state.user.lang = best.lang;
+            if (state.lang !== best.lang) {
+              setLang(best.lang, true);
+            }
+          }
+          try {
+            localStorage.setItem(getMemberProfileKey(state.user), JSON.stringify({
+              nickname: state.user.preferredNickname,
+              livingArea: state.user.livingArea,
+              receiveFinalizedEmail: state.user.receiveFinalizedEmail,
+              lang: state.user.lang || state.lang || 'zh-TW',
+              updatedAt: cloudTs || Date.now()
+            }));
+            localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(state.user));
+          } catch (e) {}
+          const authInitial = document.getElementById('authInitial');
+          if (authInitial) authInitial.textContent = (state.user.preferredNickname || 'G').slice(0, 1).toUpperCase();
+          autoApplyPreferredNicknameToInputs(prevNick);
+          populateMemberMenuFields();
+          syncCurrentMemberPreferenceToActiveRoom();
+          renderRoom();
+          renderDashboard();
+        }
+      }
+      return best;
+    }
+
     function loadMemberProfileForUser(user) {
-      if (!user) return { nickname: '', livingArea: '', receiveFinalizedEmail: true };
+      if (!user) return { nickname: '', livingArea: '', receiveFinalizedEmail: true, lang: state.lang || 'zh-TW' };
       try {
         const raw = localStorage.getItem(getMemberProfileKey(user));
         if (raw) {
@@ -1953,14 +2140,18 @@
           return {
             nickname: (parsed.nickname || user.displayName || '').trim(),
             livingArea: (parsed.livingArea || '').trim(),
-            receiveFinalizedEmail: parsed.receiveFinalizedEmail !== undefined ? Boolean(parsed.receiveFinalizedEmail) : true
+            receiveFinalizedEmail: parsed.receiveFinalizedEmail !== undefined ? Boolean(parsed.receiveFinalizedEmail) : true,
+            lang: (parsed.lang && I18N[parsed.lang]) ? parsed.lang : (state.lang || 'zh-TW'),
+            updatedAt: Number(parsed.updatedAt) || 0
           };
         }
       } catch (e) {}
       return {
         nickname: (user.displayName || '').trim(),
         livingArea: '',
-        receiveFinalizedEmail: true
+        receiveFinalizedEmail: true,
+        lang: state.lang || 'zh-TW',
+        updatedAt: 0
       };
     }
 
@@ -1969,6 +2160,7 @@
       const receiveEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
       const userEmail = (state.user.email || '').trim();
       const userUid = (state.user.uid || '').trim();
+      const userLang = (state.user.lang || state.lang || 'zh-TW').trim();
       const actorId = typeof currentActorId === 'function' ? currentActorId() : null;
       const isHostViewer = typeof isRoomHostViewer === 'function' && isRoomHostViewer(state.event);
       let touched = false;
@@ -1988,13 +2180,15 @@
         if (!p) return;
         const isMatch = (actorId && actorId !== 'p_new_visitor' && p.id === actorId) ||
                         (userUid && p.memberUid === userUid) ||
+                        (userEmail && (p.memberEmail || '').trim().toLowerCase() === userEmail.toLowerCase()) ||
                         (p.isHost && isHostViewer) ||
                         (p.isHost && userUid && state.event.hostUid === userUid);
         if (isMatch) {
-          if (p.isMember !== true || p.memberEmail !== userEmail || p.memberUid !== userUid || p.receiveFinalizedEmail !== receiveEmail) {
+          if (p.isMember !== true || p.memberEmail !== userEmail || p.memberUid !== userUid || p.receiveFinalizedEmail !== receiveEmail || p.memberLang !== userLang) {
             p.isMember = true;
             p.memberUid = userUid;
             p.memberEmail = userEmail;
+            p.memberLang = userLang;
             p.receiveFinalizedEmail = receiveEmail;
             touched = true;
           }
@@ -2183,16 +2377,21 @@
       state.user.preferredNickname = newNick;
       state.user.livingArea = newArea;
       state.user.receiveFinalizedEmail = receiveEmail;
+      state.user.lang = state.lang || 'zh-TW';
 
       try {
         localStorage.setItem(getMemberProfileKey(state.user), JSON.stringify({
           nickname: newNick,
           livingArea: newArea,
           receiveFinalizedEmail: receiveEmail,
+          lang: state.user.lang,
           updatedAt: Date.now()
         }));
         localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(state.user));
       } catch (e) {}
+
+      // Sync member profile (preferred nickname, living area, email opt-in, language) to Cloud Firestore & CloudSync
+      syncMemberProfileToCloud(state.user);
 
       // Also update displayName in saved accounts chooser list
       upsertSavedGoogleAccount({
@@ -2245,6 +2444,7 @@
       chosenUser.preferredNickname = profile.nickname || chosenUser.displayName || 'Google 會員';
       chosenUser.livingArea = profile.livingArea || '';
       chosenUser.receiveFinalizedEmail = profile.receiveFinalizedEmail !== undefined ? Boolean(profile.receiveFinalizedEmail) : true;
+      chosenUser.lang = profile.lang || state.lang || 'zh-TW';
 
       try {
         localStorage.setItem(ACTIVE_MEMBER_SESSION_KEY, JSON.stringify(chosenUser));
@@ -2256,6 +2456,11 @@
       if (window.FirebaseBridge?.fetchCloudRooms) {
         window.FirebaseBridge.fetchCloudRooms();
       }
+      fetchMemberProfileFromCloud(chosenUser).then(cloudProf => {
+        if (!cloudProf) {
+          syncMemberProfileToCloud(chosenUser);
+        }
+      });
     }
 
     async function triggerGooglePopupSignIn() {
@@ -2302,12 +2507,17 @@
         user.preferredNickname = user.preferredNickname || prof.nickname || user.displayName || 'Google 會員';
         user.livingArea = user.livingArea !== undefined ? user.livingArea : (prof.livingArea || '');
         user.receiveFinalizedEmail = user.receiveFinalizedEmail !== undefined ? Boolean(user.receiveFinalizedEmail) : (prof.receiveFinalizedEmail !== undefined ? Boolean(prof.receiveFinalizedEmail) : true);
+        user.lang = user.lang || prof.lang || state.lang || 'zh-TW';
       }
 
       state.user = user || null;
       state.isMember = Boolean(user);
       if (state.isMember && state.user) {
+        if (state.user.lang && I18N[state.user.lang] && state.user.lang !== state.lang) {
+          setLang(state.user.lang, true);
+        }
         syncCurrentMemberPreferenceToActiveRoom();
+        fetchMemberProfileFromCloud(state.user);
       }
 
       document.getElementById('savedSpotsSection').classList.toggle('hidden', !state.isMember);
@@ -2505,8 +2715,7 @@
         if (titleEl) titleEl.textContent = `${prefNick} (會員)${areaText}`;
         if (subEl) subEl.textContent = `${state.user.email ? state.user.email + ' · ' : ''}揪團資料已保存在雲端資料庫，可跨裝置管理`;
         if (actionBtn) {
-          actionBtn.textContent = '⚙️ 個人資料與選單';
-          actionBtn.className = 'rounded-xl bg-brand-50 px-3.5 py-2 text-xs font-extrabold text-brand-700 hover:bg-brand-100 transition';
+          actionBtn.classList.add('hidden');
         }
       } else {
         if (iconEl) iconEl.textContent = '訪';
@@ -2534,19 +2743,32 @@
 
       const rooms = getAllKnownRooms();
       const devTok = getDeviceToken();
-      const myUid = state.user?.uid;
+      const myUid = (state.user?.uid || '').trim();
+      const myEmail = (state.user?.email || '').trim().toLowerCase();
       const myUidActor = myUid ? ('p_u_' + myUid.slice(0, 10)) : null;
 
       const hosted = [];
       const joined = [];
 
       rooms.forEach(r => {
-        if (r.id === 'friday-hotpot-88') return;
-        const isHost = (myUid && r.hostUid === myUid) || localStorage.getItem('squadup_host_of_' + r.id) === '1';
+        if (!r || !r.id || r.id === 'friday-hotpot-88') return;
+        const isHost =
+          (myUid && r.hostUid === myUid) ||
+          (myEmail && (r.hostEmail || '').trim().toLowerCase() === myEmail) ||
+          localStorage.getItem('squadup_host_of_' + r.id) === '1';
         if (isHost) {
           hosted.push(r);
         } else {
-          const isParticipant = (r.participants || []).some(p => p.id === devTok || (myUidActor && p.id === myUidActor));
+          const savedMyPid = localStorage.getItem('squadup_my_pid_' + r.id);
+          const isParticipant = (r.participants || []).some(p => {
+            if (!p || p.id === 'p_new_visitor') return false;
+            if (savedMyPid && p.id === savedMyPid) return true;
+            if (p.id === devTok) return true;
+            if (myUidActor && p.id === myUidActor) return true;
+            if (myUid && (p.memberUid === myUid || p.uid === myUid)) return true;
+            if (myEmail && (p.memberEmail || '').trim().toLowerCase() === myEmail) return true;
+            return false;
+          });
           if (isParticipant) joined.push(r);
         }
       });
@@ -2740,6 +2962,7 @@
             isMember: Boolean(state.isMember && state.user),
             memberUid: state.isMember && state.user ? (state.user.uid || '') : '',
             memberEmail: state.isMember && state.user ? (state.user.email || '') : '',
+            memberLang: (state.user?.lang || state.lang || 'zh-TW').trim(),
             receiveFinalizedEmail: state.isMember && state.user
               ? (state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true)
               : true
@@ -2797,10 +3020,20 @@
       }
 
       if (state.user?.uid) {
-        const uidActor = 'p_u_' + state.user.uid.slice(0, 10);
+        const myUid = (state.user.uid || '').trim();
+        const myEmail = (state.user.email || '').trim().toLowerCase();
+        const uidActor = 'p_u_' + myUid.slice(0, 10);
         if (ev.participants && ev.participants.some(p => p.id === uidActor)) {
           setTabActorForRoom(ev.id, uidActor);
           return uidActor;
+        }
+        const memberRecord = (ev.participants || []).find(p =>
+          (myUid && (p.memberUid === myUid || p.uid === myUid)) ||
+          (myEmail && (p.memberEmail || '').trim().toLowerCase() === myEmail)
+        );
+        if (memberRecord) {
+          setTabActorForRoom(ev.id, memberRecord.id);
+          return memberRecord.id;
         }
       }
       const devTok = getDeviceToken();
@@ -3913,6 +4146,7 @@
           existing.isMember = true;
           existing.memberUid = state.user.uid || '';
           existing.memberEmail = state.user.email || '';
+          existing.memberLang = (state.user.lang || state.lang || 'zh-TW').trim();
           existing.receiveFinalizedEmail = state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true;
         }
         ev.actorUpdatedAt[actorId] = nowTs;
@@ -3940,6 +4174,7 @@
           isMember: Boolean(state.isMember && state.user),
           memberUid: state.isMember && state.user ? (state.user.uid || '') : '',
           memberEmail: state.isMember && state.user ? (state.user.email || '') : '',
+          memberLang: (state.user?.lang || state.lang || 'zh-TW').trim(),
           receiveFinalizedEmail: state.isMember && state.user
             ? (state.user.receiveFinalizedEmail !== undefined ? Boolean(state.user.receiveFinalizedEmail) : true)
             : true
@@ -4110,6 +4345,16 @@
         }
         if (!wantsEmail) return;
 
+        let recipientLang = (p.memberLang && I18N[p.memberLang]) ? p.memberLang : '';
+        if (!recipientLang && state.isMember && state.user && (
+          (p.memberUid && p.memberUid === state.user.uid) ||
+          (email.toLowerCase() === (state.user.email || '').trim().toLowerCase()) ||
+          (p.isHost && isCurrentUserHost)
+        )) {
+          recipientLang = state.user.lang || state.lang || 'zh-TW';
+        }
+        if (!recipientLang) recipientLang = state.lang || 'zh-TW';
+
         const lower = email.toLowerCase();
         if (!seenEmails.has(lower)) {
           seenEmails.add(lower);
@@ -4117,11 +4362,171 @@
             id: p.id,
             nickname: p.nickname || (p.isHost ? ev.hostNickname : '會員'),
             email: email,
-            isHost: Boolean(p.isHost)
+            isHost: Boolean(p.isHost),
+            lang: recipientLang
           });
         }
       });
       return recipients;
+    }
+
+    function escapeEmailHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function buildLocalizedEmailForRecipient(ev, r, chosenDate, chosenSlot, chosenLocRaw, shareUrl, cleanNotes) {
+      const lang = (r.lang && I18N[r.lang]) ? r.lang : (state.lang || 'zh-TW');
+      const slotLabel = formatSlotDisplayLabel(chosenSlot, lang, true);
+      const timeText = `${chosenDate} · ${slotLabel}`;
+      const isTbdLoc = !chosenLocRaw || chosenLocRaw === '地點尚未確定' || chosenLocRaw === 'Place to be decided' || chosenLocRaw === '場所は未定です';
+      const locationText = isTbdLoc
+        ? (lang === 'en' ? 'Place to be decided' : lang === 'ja' ? '場所は未定です' : '地點尚未確定')
+        : chosenLocRaw;
+      const validParticipants = (ev.participants || []).filter(p => p && p.id !== 'p_new_visitor');
+      const hostTag = lang === 'en' ? ' (Host)' : lang === 'ja' ? ' (幹事)' : ' (主辦人)';
+      const sep = lang === 'en' ? ', ' : '、';
+      const participantNames = validParticipants.map(p => `${p.nickname}${p.isHost ? hostTag : ''}`).join(sep);
+
+      let subject = `【揪一下成行通知】「${ev.title}」已拍板定案！（${chosenDate}）`;
+      let bodyLines = [];
+      let badgeText = '🎉 揪一下 SQUAD UP · 成行通知';
+      let headerTitle = `「${escapeEmailHtml(ev.title)}」已拍板定案！`;
+      let roleTag = r.isHost ? '（主辦人）' : '（參加者）';
+      let introHtml = `Hi <strong>${escapeEmailHtml(r.nickname)}</strong> ${roleTag}，您參與的揪團活動已經由主辦人 <strong>${escapeEmailHtml(ev.hostNickname)}</strong> 拍板定案囉！以下是本次成行活動的詳細資訊：`;
+      let lblTitle = '📌 活動主題';
+      let lblHost = '👑 主辦人';
+      let lblTime = '🕒 確認時間';
+      let lblLoc = '📍 確認地點';
+      let lblParticipants = '👥 參加成員名單';
+      let lblCode = '🔑 房間代碼';
+      let lblNotes = '📝 活動備註';
+      let btnText = '開啟揪團房間與匯出行事曆 →';
+      let footerText = '此信件由「揪一下 Squad Up」系統自動發送，因為您已登入會員並勾選「接收成行 E-Mail 通知」。';
+
+      if (lang === 'en') {
+        subject = `[Squad Up Confirmed] "${ev.title}" has been finalized! (${chosenDate})`;
+        bodyLines = [
+          `Hi ${r.nickname} ${r.isHost ? '(Host)' : '(Participant)'}! Your gathering "${ev.title}" has been finalized by host ${ev.hostNickname}. Here are the confirmed details:`,
+          '',
+          `📌 Event Title: ${ev.title}`,
+          `👑 Host: ${ev.hostNickname}`,
+          `🕒 Confirmed Time: ${timeText}`,
+          `📍 Confirmed Place: ${locationText}`
+        ];
+        if (cleanNotes) bodyLines.push(`📝 Event Notes: ${cleanNotes}`);
+        bodyLines.push(
+          `👥 Participants (${validParticipants.length}): ${participantNames}`,
+          `🔑 Room Code: ${ev.id}`,
+          `🔗 Gathering Link: ${shareUrl}`,
+          '',
+          '— Squad Up | Real-time online gathering coordination'
+        );
+        badgeText = '🎉 SQUAD UP · GATHERING CONFIRMED';
+        headerTitle = `"${escapeEmailHtml(ev.title)}" is Confirmed!`;
+        roleTag = r.isHost ? '(Host)' : '(Participant)';
+        introHtml = `Hi <strong>${escapeEmailHtml(r.nickname)}</strong> ${roleTag}, your gathering has been finalized by host <strong>${escapeEmailHtml(ev.hostNickname)}</strong>! Here are the confirmed event details:`;
+        lblTitle = '📌 Event Title';
+        lblHost = '👑 Host';
+        lblTime = '🕒 Confirmed Time';
+        lblLoc = '📍 Confirmed Place';
+        lblParticipants = '👥 Participants';
+        lblCode = '🔑 Room Code';
+        lblNotes = '📝 Event Notes';
+        btnText = 'Open Gathering Room & Export Calendar →';
+        footerText = 'Sent automatically by Squad Up because you signed in and enabled finalized gathering E-Mail notifications.';
+      } else if (lang === 'ja') {
+        subject = `【スコッドアップ開催確定】「${ev.title}」の日程が確定しました！（${chosenDate}）`;
+        bodyLines = [
+          `${r.nickname} 様${r.isHost ? '（幹事）' : '（参加者）'}、参加中の募集「${ev.title}」が幹事の ${ev.hostNickname} さんにより確定されました！確定した詳細は以下の通りです：`,
+          '',
+          `📌 イベント名：${ev.title}`,
+          `👑 幹事：${ev.hostNickname}`,
+          `🕒 確定日時：${timeText}`,
+          `📍 確定場所：${locationText}`
+        ];
+        if (cleanNotes) bodyLines.push(`📝 イベント備考：${cleanNotes}`);
+        bodyLines.push(
+          `👥 参加メンバー（計 ${validParticipants.length} 名）：${participantNames}`,
+          `🔑 ルームコード：${ev.id}`,
+          `🔗 ルームリンク：${shareUrl}`,
+          '',
+          '—— スコッドアップ Squad Up | オンラインでリアルタイムに集まりを調整'
+        );
+        badgeText = '🎉 スコッドアップ SQUAD UP · 開催確定通知';
+        headerTitle = `「${escapeEmailHtml(ev.title)}」の日程が確定しました！`;
+        roleTag = r.isHost ? '（幹事）' : '（参加者）';
+        introHtml = `<strong>${escapeEmailHtml(r.nickname)}</strong> 様 ${roleTag}、参加中の募集が幹事の <strong>${escapeEmailHtml(ev.hostNickname)}</strong> さんによって確定されました！詳細は以下の通りです：`;
+        lblTitle = '📌 イベント名';
+        lblHost = '👑 幹事';
+        lblTime = '🕒 確定日時';
+        lblLoc = '📍 確定場所';
+        lblParticipants = '👥 参加メンバー';
+        lblCode = '🔑 ルームコード';
+        lblNotes = '📝 イベント備考';
+        btnText = 'ルームを開いてカレンダーに追加 →';
+        footerText = 'このメールは「スコッドアップ Squad Up」でログインし、開催確定のE-Mail通知をオンに設定された方へ自動送信されています。';
+      } else {
+        bodyLines = [
+          `您好！您參與的揪團活動「${ev.title}」已由主辦人 ${ev.hostNickname} 拍板定案，以下是成行活動詳細內容：`,
+          '',
+          `📌 活動主題：${ev.title}`,
+          `👑 主辦人：${ev.hostNickname}`,
+          `🕒 確認時間：${timeText}`,
+          `📍 確認地點：${locationText}`
+        ];
+        if (cleanNotes) bodyLines.push(`📝 活動備註：${cleanNotes}`);
+        bodyLines.push(
+          `👥 參加成員（共 ${validParticipants.length} 人）：${participantNames}`,
+          `🔑 房間代碼：${ev.id}`,
+          `🔗 活動房間連結：${shareUrl}`,
+          '',
+          '—— 揪一下 Squad Up 線上即時聚會協調'
+        );
+      }
+
+      const notesBlock = cleanNotes
+        ? `<div style="margin-top:12px;padding:12px 14px;background:#FAF6F1;border-left:4px solid #795238;border-radius:8px;"><div style="font-size:12px;font-weight:bold;color:#64422E;margin-bottom:4px;">${lblNotes}</div><div style="font-size:14px;color:#2D3748;white-space:pre-wrap;line-height:1.6;">${escapeEmailHtml(cleanNotes)}</div></div>`
+        : '';
+
+      const htmlBody =
+        `<div style="font-family:'Noto Sans TC','PingFang TC','Hiragino Sans','Meiryo','Microsoft JhengHei',sans-serif;max-width:560px;margin:0 auto;background:#FAF9F5;padding:24px;border-radius:20px;border:1px solid #E2CDB7;color:#2D3748;">` +
+          `<div style="background:linear-gradient(135deg,#2C1E16,#503526);padding:20px 22px;border-radius:16px;color:#FFFFFF;">` +
+            `<div style="font-size:12px;color:#F9C48A;font-weight:bold;letter-spacing:0.5px;">${badgeText}</div>` +
+            `<h2 style="margin:6px 0 0;font-size:20px;color:#FFFFFF;">${headerTitle}</h2>` +
+          `</div>` +
+          `<div style="padding:18px 4px 8px;">` +
+            `<p style="font-size:14px;line-height:1.6;margin:0 0 14px;">${introHtml}</p>` +
+            `<div style="background:#FFFFFF;border:1px solid #E2E8F0;border-radius:14px;padding:16px;">` +
+              `<div style="margin-bottom:10px;"><span style="font-size:12px;color:#718096;display:block;">${lblTitle}</span><strong style="font-size:15px;color:#2D3748;">${escapeEmailHtml(ev.title)}</strong></div>` +
+              `<div style="margin-bottom:10px;"><span style="font-size:12px;color:#718096;display:block;">${lblHost}</span><strong style="font-size:14px;color:#2D3748;">${escapeEmailHtml(ev.hostNickname)}</strong></div>` +
+              `<div style="margin-bottom:10px;"><span style="font-size:12px;color:#718096;display:block;">${lblTime}</span><strong style="font-size:15px;color:#795238;">${escapeEmailHtml(timeText)}</strong></div>` +
+              `<div style="margin-bottom:10px;"><span style="font-size:12px;color:#718096;display:block;">${lblLoc}</span><strong style="font-size:15px;color:#C26D1F;">${escapeEmailHtml(locationText)}</strong></div>` +
+              `<div style="margin-bottom:10px;"><span style="font-size:12px;color:#718096;display:block;">${lblParticipants}</span><span style="font-size:14px;color:#2D3748;font-weight:600;">${escapeEmailHtml(participantNames)}</span></div>` +
+              `<div><span style="font-size:12px;color:#718096;display:block;">${lblCode}</span><code style="font-size:13px;background:#F1E6DA;color:#503526;padding:2px 8px;border-radius:6px;font-weight:bold;">${escapeEmailHtml(ev.id)}</code></div>` +
+              notesBlock +
+            `</div>` +
+            `<div style="text-align:center;margin-top:20px;">` +
+              `<a href="${escapeEmailHtml(shareUrl)}" target="_blank" style="display:inline-block;background:#795238;color:#FFFFFF;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 26px;border-radius:12px;">${btnText}</a>` +
+            `</div>` +
+            `<p style="margin-top:20px;font-size:11px;color:#718096;text-align:center;">${footerText}</p>` +
+          `</div>` +
+        `</div>`;
+
+      return {
+        ...r,
+        lang,
+        subject,
+        bodyText: bodyLines.join('\n'),
+        htmlBody,
+        timeText,
+        locationText,
+        participantsText: participantNames
+      };
     }
 
     function buildFinalizedEmailPayload(ev = state.event) {
@@ -4129,46 +4534,37 @@
       const top = computeTop3();
       const chosenDate = ev.finalDate || top[0]?.date || dateOffsetStr(3);
       const chosenSlot = ev.finalSlot || top[0]?.slot || 'EVENING';
-      const slotLabel = formatSlotDisplayLabel(chosenSlot, state.lang, true);
       const chosenLoc = ev.finalLocation || (ev.locations?.[0]?.name) || '地點尚未確定';
       const shareUrl = getRoomShareUrl(ev);
       const cleanNotes = (ev.notes || '').trim();
-      const participantNames = (ev.participants || [])
-        .filter(p => p && p.id !== 'p_new_visitor')
-        .map(p => `${p.nickname}${p.isHost ? ' (主辦人)' : ''}`)
-        .join('、');
-      const recipients = getFinalizedEmailRecipients(ev);
+      const rawRecipients = getFinalizedEmailRecipients(ev);
+      const recipients = rawRecipients.map(r =>
+        buildLocalizedEmailForRecipient(ev, r, chosenDate, chosenSlot, chosenLoc, shareUrl, cleanNotes)
+      );
 
-      const subject = `【揪一下成行通知】「${ev.title}」已拍板定案！（${chosenDate}）`;
-      const lines = [
-        `您好！您參與的揪團活動「${ev.title}」已由主辦人 ${ev.hostNickname} 拍板定案，以下是成行活動詳細內容：`,
-        '',
-        `📌 活動主題：${ev.title}`,
-        `👑 主辦人：${ev.hostNickname}`,
-        `🕒 確認時間：${chosenDate} · ${slotLabel}`,
-        `📍 確認地點：${chosenLoc}`
-      ];
-      if (cleanNotes) {
-        lines.push(`📝 活動備註：${cleanNotes}`);
-      }
-      lines.push(
-        `👥 參加成員（共 ${(ev.participants || []).filter(p => p && p.id !== 'p_new_visitor').length} 人）：${participantNames}`,
-        `🔑 房間代碼：${ev.id}`,
-        `🔗 活動房間連結：${shareUrl}`,
-        '',
-        '—— 揪一下 Squad Up 線上即時聚會協調'
+      const defaultLang = state.lang || 'zh-TW';
+      const fallbackRecipient = buildLocalizedEmailForRecipient(
+        ev,
+        { id: 'p_host', nickname: ev.hostNickname || '主辦人', email: '', isHost: true, lang: defaultLang },
+        chosenDate,
+        chosenSlot,
+        chosenLoc,
+        shareUrl,
+        cleanNotes
       );
 
       return {
+        lang: defaultLang,
+        finalDate: chosenDate,
         recipients,
-        subject,
-        bodyText: lines.join('\n'),
+        subject: fallbackRecipient.subject,
+        bodyText: fallbackRecipient.bodyText,
         title: ev.title,
         hostNickname: ev.hostNickname,
-        timeText: `${chosenDate} · ${slotLabel}`,
-        locationText: chosenLoc,
+        timeText: fallbackRecipient.timeText,
+        locationText: fallbackRecipient.locationText,
         notes: cleanNotes,
-        participantsText: participantNames,
+        participantsText: fallbackRecipient.participantsText,
         roomCode: ev.id,
         shareUrl
       };
@@ -4837,9 +5233,13 @@
       ['代碼一鍵分享：輸入專屬代碼或連結立即加入','One-click sharing: join instantly with a code or link','コードで簡単共有：専用コードやリンクですぐ参加'],
       ['Firebase 雲端存取：由 Google 安全防護與儲存','Firebase Cloud storage: secured and backed by Google','Firebase クラウド保存：Google による安全な保護と保存'],
       ['⚙️ 個人資料設定','⚙️ Profile settings','⚙️ プロフィール設定'],
+      ['✓ 已儲存並套用','✓ Saved & applied','✓ 保存・適用済み'],
+      ['已登入','Signed in','ログイン中'],
       ['常用暱稱','Preferred nickname','よく使うニックネーム'],
+      ['例如：小明、Alex','e.g., Alex, Sam','例：タロウ、Alex'],
       ['登入後無論主辦或參加揪團皆自動套入，仍可再次修改','Auto-filled when hosting or joining gatherings (can be edited anytime)','主催・参加時に自動入力されます（後から変更可能）'],
       ['主要生活圈','Primary living area','主な活動エリア'],
+      ['輸入地區，例如：台北市、台中市、高雄市','Enter area, e.g., New York, London, Sydney','エリアを入力（例：東京、大阪、名古屋）'],
       ['未來將用於推送生活圈附近的揪團活動','Used in the future to recommend nearby gatherings','今後エリア周辺の募集通知に活用されます'],
       ['💾 儲存個人資料設定','💾 Save profile settings','💾 プロフィールを保存'],
       ['⚙️ 個人資料與選單','⚙️ Profile & menu','⚙️ プロフィール・メニュー'],
@@ -4953,6 +5353,10 @@
           }
         }
         for (const input of root.querySelectorAll('[placeholder]')) {
+          if (input.id === 'profileAreaInput') {
+            input.setAttribute('placeholder', LIVING_AREA_PLACEHOLDERS[lang] || LIVING_AREA_PLACEHOLDERS['zh-TW']);
+            continue;
+          }
           if (!PAGE_PLACEHOLDERS.has(input)) PAGE_PLACEHOLDERS.set(input, input.getAttribute('placeholder'));
           const original = PAGE_PLACEHOLDERS.get(input);
           const match = PAGE_TEXT.get(original);
@@ -4961,7 +5365,7 @@
       }
     }
     const originalSetLang = setLang;
-    setLang = function(lang) { originalSetLang(lang); translatePageText(); };
+    setLang = function(lang, skipCloudSync) { originalSetLang(lang, skipCloudSync); translatePageText(); };
     const pageObserver = new MutationObserver(() => translatePageText());
     pageObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
     translatePageText();
@@ -4972,6 +5376,14 @@
         localStorage.removeItem(RECENT_ROOM_KEY);
       }
       localStorage.removeItem(STORAGE_PREFIX + 'friday-hotpot-88');
+
+      // Restore previously saved UI language before restoring member session
+      const savedLang = localStorage.getItem('squadup_preferred_lang_v1');
+      if (savedLang && I18N[savedLang]) {
+        setLang(savedLang, true);
+      } else {
+        renderLivingAreaPresets(state.lang);
+      }
 
       // Restore explicitly confirmed member session (if user previously completed Google account chooser login)
       const savedSessionRaw = localStorage.getItem(ACTIVE_MEMBER_SESSION_KEY);
@@ -5193,19 +5605,60 @@
           console.warn('Firestore fetchCloudRooms notice:', err.message);
           return [];
         }
+      },
+
+      async saveUserProfileToCloud(uid, profileData) {
+        if (!uid || !profileData) return false;
+        try {
+          const cleanProfile = {
+            uid: String(uid).slice(0, 128),
+            email: String(profileData.email || '').slice(0, 254),
+            displayName: String(profileData.displayName || '').slice(0, 100),
+            nickname: String(profileData.nickname || '').slice(0, 100),
+            livingArea: String(profileData.livingArea || '').slice(0, 100),
+            lang: String(profileData.lang || 'zh-TW').slice(0, 16),
+            receiveFinalizedEmail: profileData.receiveFinalizedEmail !== undefined ? Boolean(profileData.receiveFinalizedEmail) : true,
+            updatedAt: Number(profileData.updatedAt) || Date.now()
+          };
+          await setDoc(doc(db, 'users', uid), cleanProfile, { merge: true });
+          return true;
+        } catch (err) {
+          console.warn('Firestore saveUserProfileToCloud notice:', err.message);
+          return false;
+        }
+      },
+
+      async loadUserProfileFromCloud(uid) {
+        if (!uid) return null;
+        try {
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists()) {
+            return snap.data();
+          }
+        } catch (err) {
+          console.warn('Firestore loadUserProfileFromCloud notice:', err.message);
+        }
+        return null;
       }
     };
 
-    // Flush any pending room sync if created before Firebase module initialized
+    // Flush any pending room sync or user profile sync if created before Firebase module initialized
     if (window.__pendingCloudSyncRoom) {
       window.FirebaseBridge.saveRoomToCloud(window.__pendingCloudSyncRoom);
       window.FirebaseBridge.subscribeToRoom(window.__pendingCloudSyncRoom.id);
       window.__pendingCloudSyncRoom = null;
     }
+    if (window.__pendingCloudUserProfile && window.__pendingCloudUserProfile.uid) {
+      window.FirebaseBridge.saveUserProfileToCloud(window.__pendingCloudUserProfile.uid, window.__pendingCloudUserProfile);
+      window.__pendingCloudUserProfile = null;
+    }
 
-    // If member session was already restored before module load, sync cloud rooms for home & dashboard
+    // If member session was already restored before module load, sync cloud rooms & profile for home & dashboard
     if (window.state.isMember) {
       window.FirebaseBridge.fetchCloudRooms();
+      if (window.state.user && typeof window.fetchMemberProfileFromCloud === 'function') {
+        window.fetchMemberProfileFromCloud(window.state.user);
+      }
     }
 
     // If URL opened with #room=SQ-XXXX, check Firestore in background for latest cloud data
