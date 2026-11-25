@@ -1,8 +1,8 @@
-# 揪一下（Squad Up / スコッドアップ）v1.11.5
+# 揪一下（Squad Up / スコッドアップ）v1.11.6
 
 線上即時聚會協調專案，提供繁體中文、英文與日文介面，協助主辦人發起揪團、蒐集可參加時段與候選地點。
 
-> 文件更新：2026-11-23。最新單檔 HTML 原型為 v1.11.5，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
+> 文件更新：2026-11-25。最新單檔 HTML 原型為 v1.11.6，根目錄 `index.html`、`version/Gemini_v1.10.0/index.html` 與 `version/Gemini_v1.7/index.html` 內容（截至 v1.10.2）已留存備份。`app/` 是獨立的 Next.js 全端實作，套件版本為 `0.1.0`。
 
 ## v1.11.0 更新重點
 
@@ -113,6 +113,9 @@ npm run db:local
 - [競品研究](docs/research/competitors/)
 
 ## 版本紀錄 (Changelog)
+
+### v1.11.6 (2026-11-25)
+- **修復**：於 HTML 版網站引入 Google Fonts（`Plus Jakarta Sans`、`Inter`、`Noto Sans TC`、`Noto Sans JP`），並依目前頁面語系分流套用字型（日文介面優先使用 `Noto Sans JP`），解決日文部分新字體漢字（如「択」「図」「帯」）與繁中系統字型混排顯示不一致的問題。
 
 ### v1.11.5 (2026-11-23)
 - **新增**：Google 登入新增防擋彈窗自動備援機制（當瀏覽器攔截彈跳視窗時自動切換為 `signInWithRedirect` 同頁跳轉登入），並於登入視窗提供手動「同頁跳轉登入」按鈕。
